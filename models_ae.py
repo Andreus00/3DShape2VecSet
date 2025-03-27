@@ -427,6 +427,10 @@ def create_autoencoder(dim=512, M=512, latent_dim=64, N=2048, determinisitc=Fals
         )
     return model
 
+
+def kl_garments(N=8192):
+    return create_autoencoder(dim=512, M=1, latent_dim=4096, N=N, determinisitc=False)
+
 def kl_d512_m512_l512(N=2048):
     return create_autoencoder(dim=512, M=512, latent_dim=512, N=N, determinisitc=False)
     
