@@ -26,7 +26,7 @@ category_ids = {
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=2048, return_surface=True, surface_sampling=True, pc_size=2048, replica=1, use_orig_dataset=False):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=2048, return_surface=True, surface_sampling=True, pc_size=2048, replica=1):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
