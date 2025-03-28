@@ -1,0 +1,33 @@
+JobId=1282001 JobName=garment-encoder
+   UserId=pba764(5013) GroupId=ponsmoll(4037) MCS_label=N/A
+   Priority=54241 Nice=0 Account=ponsmoll QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=10:00:00 TimeMin=N/A
+   SubmitTime=2025-03-28T17:57:54 EligibleTime=2025-03-28T17:57:54
+   AccrueTime=2025-03-28T17:57:56
+   StartTime=2025-03-28T17:58:02 EndTime=2025-03-29T03:58:02 Deadline=N/A
+   PreemptEligibleTime=2025-03-28T17:59:02 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2025-03-28T17:58:02 Scheduler=Backfill
+   Partition=cpu-galvani AllocNode:Sid=galvani-login:404779
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=galvani-cn002
+   BatchHost=galvani-cn002
+   NumNodes=1 NumCPUs=16 NumTasks=1 CPUs/Task=16 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=16,mem=50G,node=1,billing=3
+   AllocTRES=cpu=16,mem=50G,node=1,billing=3
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=16 MinMemoryNode=50G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/sbatch_run.sh
+   WorkDir=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+   StdErr=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs/myjob-1282001.err
+   StdIn=/dev/null
+   StdOut=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs/myjob-1282001.out
+   Power=
+   MailUser=andrea.sanchietti@unituebingen.de MailType=INVALID_DEPEND,BEGIN,END,FAIL,REQUEUE,STAGE_OUT
+   
+
+/home/ponsmoll/pba764/projects/3DShape2VecSet
+RUNNING DIST OPTION 2

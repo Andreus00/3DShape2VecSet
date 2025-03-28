@@ -1,0 +1,64 @@
+JobId=1282006 JobName=garment-encoder
+   UserId=pba764(5013) GroupId=ponsmoll(4037) MCS_label=N/A
+   Priority=54241 Nice=0 Account=ponsmoll QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=10:00:00 TimeMin=N/A
+   SubmitTime=2025-03-28T18:02:24 EligibleTime=2025-03-28T18:02:24
+   AccrueTime=2025-03-28T18:02:24
+   StartTime=2025-03-28T18:02:33 EndTime=2025-03-29T04:02:33 Deadline=N/A
+   PreemptEligibleTime=2025-03-28T18:03:33 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2025-03-28T18:02:33 Scheduler=Backfill
+   Partition=cpu-galvani AllocNode:Sid=galvani-login:404779
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=galvani-cn002
+   BatchHost=galvani-cn002
+   NumNodes=1 NumCPUs=16 NumTasks=1 CPUs/Task=16 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=16,mem=50G,node=1,billing=3
+   AllocTRES=cpu=16,mem=50G,node=1,billing=3
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=16 MinMemoryNode=50G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/sbatch_run.sh
+   WorkDir=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+   StdErr=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs/myjob-1282006.err
+   StdIn=/dev/null
+   StdOut=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs/myjob-1282006.out
+   Power=
+   MailUser=andrea.sanchietti@unituebingen.de MailType=INVALID_DEPEND,BEGIN,END,FAIL,REQUEUE,STAGE_OUT
+   
+
+/home/ponsmoll/pba764/projects/3DShape2VecSet
+Not using distributed mode
+[18:02:40.715249] job dir: /mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+[18:02:40.715304] Namespace(batch_size=64,
+epochs=800,
+accum_iter=1,
+model='kl_garments',
+point_cloud_size=2048,
+clip_grad=None,
+weight_decay=0.05,
+lr=None,
+blr=0.0001,
+layer_decay=0.75,
+min_lr=1e-06,
+warmup_epochs=40,
+data_path='../GarmentCode/garmentcodedata_v2',
+output_dir='./output/',
+log_dir='./output/',
+device='cuda',
+seed=0,
+resume='',
+start_epoch=0,
+eval=False,
+dist_eval=False,
+num_workers=2,
+pin_mem=False,
+world_size=1,
+local_rank=-1,
+dist_on_itp=False,
+dist_url='env://',
+only_udf=True,
+force_occupancy=True,
+distributed=False)

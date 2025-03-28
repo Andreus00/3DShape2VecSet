@@ -1,0 +1,64 @@
+JobId=1280470 JobName=garment-encoder
+   UserId=pba764(5013) GroupId=ponsmoll(4037) MCS_label=N/A
+   Priority=55184 Nice=0 Account=ponsmoll QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=3-00:00:00 TimeMin=N/A
+   SubmitTime=2025-03-28T00:54:29 EligibleTime=2025-03-28T00:54:29
+   AccrueTime=2025-03-28T00:54:30
+   StartTime=2025-03-28T00:54:30 EndTime=2025-03-31T01:54:30 Deadline=N/A
+   PreemptEligibleTime=2025-03-28T00:55:30 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2025-03-28T00:54:30 Scheduler=Main
+   Partition=2080-galvani AllocNode:Sid=galvani-slurmctl:4171165
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=galvani-cn122
+   BatchHost=galvani-cn122
+   NumNodes=1 NumCPUs=32 NumTasks=1 CPUs/Task=32 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=32,mem=50G,node=1,billing=8,gres/gpu=1
+   AllocTRES=cpu=32,mem=50G,node=1,billing=8,gres/gpu=1,gres/gpu:rtx2080ti=1
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=32 MinMemoryNode=50G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/sbatch_run.sh
+   WorkDir=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+   StdErr=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs/myjob-1280470.err
+   StdIn=/dev/null
+   StdOut=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs/myjob-1280470.out
+   Power=
+   TresPerNode=gres:gpu:1
+   MailUser=andrea.sanchietti@uni-tuebingen.de MailType=INVALID_DEPEND,BEGIN,END,FAIL,REQUEUE,STAGE_OUT
+   
+
+/home/ponsmoll/pba764/projects/3DShape2VecSet
+Not using distributed mode
+[00:54:50.409191] job dir: /mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+[00:54:50.409339] Namespace(batch_size=64,
+epochs=800,
+accum_iter=1,
+model='kl_garments',
+point_cloud_size=2048,
+clip_grad=None,
+weight_decay=0.05,
+lr=None,
+blr=0.0001,
+layer_decay=0.75,
+min_lr=1e-06,
+warmup_epochs=40,
+data_path='../GarmentCode/garmentcodedata_v2',
+output_dir='./output/',
+log_dir='./output/',
+device='cuda',
+seed=0,
+resume='',
+start_epoch=0,
+eval=False,
+dist_eval=False,
+num_workers=2,
+pin_mem=False,
+world_size=1,
+local_rank=-1,
+dist_on_itp=False,
+dist_url='env://',
+only_udf=False,
+distributed=False)
