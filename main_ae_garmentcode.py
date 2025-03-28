@@ -91,6 +91,7 @@ def get_args_parser():
                         help='url used to set up distributed training')
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
+    parser.add_argument('--save_every', default=10, help='Saving iterval')
 
     return parser
 
@@ -206,6 +207,7 @@ def main(args):
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     max_iou = 0.0
+    best_loss = torch.inf
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
@@ -216,7 +218,8 @@ def main(args):
             log_writer=log_writer,
             args=args
         )
-        if args.output_dir and (epoch % 10 == 0 or epoch + 1 == args.epochs):
+        if args.output_dir and (epoch % args.save_every == 0 or epoch + 1 == args.epochs) and best_loss > train_stats['loss']:
+            best_loss = train_stats["loss"]
             misc.save_model(
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
