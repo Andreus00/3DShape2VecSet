@@ -43,12 +43,12 @@ def load_garmentcodedata(split, args):
         # transform = #transforms.Compose([
         # transform = AxisScaling((0.75, 1.25), True)
         # ])
-        return GarmentCode(args.data_path, split=split, sampling=True, num_samples=4096, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, sampling=True, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
     elif split == 'validation':
         # return ShapeNet(args.data_path, split=split, transform=None, sampling=True, num_samples=1024, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
-        return GarmentCode(args.data_path, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
     else:
-        return GarmentCode(args.data_path, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
 
 
 if __name__ == '__main__':

@@ -10,6 +10,7 @@ import sys
 from typing import Iterable
 
 import torch
+import numpy as np
 import torch.nn.functional as F
 
 import util.misc as misc
@@ -25,6 +26,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
+
+    num_samples = 2048
 
     accum_iter = args.accum_iter
 
@@ -55,27 +58,50 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
             outputs = outputs['logits']
 
-            
-            loss_vol = criterion(outputs[:, :1024], labels[:, :1024])
-            loss_near = criterion(outputs[:, 1024:], labels[:, 1024:])
+
+            loss = criterion(outputs, labels)
+
+
+            # if data_iter_step % 300 == 0:
+            #     # Calculate the error between outputs and labels
+            #     outputs = torch.sigmoid(outputs)
+            #     error = torch.abs(outputs[0] - labels[0])
+
+
+            #     # Plot the points with error as color
+            #     import matplotlib.pyplot as plt
+
+            #     points_np = points.cpu().numpy()
+            #     error_np = error.detach().cpu().numpy()
+
+            #     fig = plt.figure(figsize=(10, 7))
+            #     ax = fig.add_subplot(111, projection='3d')
+
+            #     # Scatter plot with error as color
+            #     scatter = ax.scatter(points_np[0, :, 0], points_np[0, :, 1], points_np[0, :, 2], c=error_np, cmap='viridis')
+            #     plt.colorbar(scatter, ax=ax, label='Error')
+            #     plt.title('Error Visualization')
+            #     plt.savefig("reconstruction_error.png")
+
+            #     print("\nINNER POINTS", points[0, :10], "\nINNER OUTS", outputs[0, :10], "\nINNER LABELS", labels[0, :10])
+            #     print("\n\nOUTER POINTS", points[0, -10:], "\nOUTER OUTS", outputs[0, -10:], "\nOUTER LABELS", labels[0, -10:])
 
             
             if loss_kl is not None:
-                loss = loss_vol + 0.1 * loss_near + kl_weight * loss_kl
-            else:
-                loss = loss_vol + 0.1 * loss_near
+                loss = loss + kl_weight * loss_kl
 
         loss_value = loss.item()
 
         threshold = 0
 
-        pred = torch.zeros_like(outputs[:, :1024])
-        pred[outputs[:, :1024]>=threshold] = 1
+        pred = torch.zeros_like(outputs[:, :num_samples])
+        pred[outputs[:, :num_samples]>=threshold] = 1
 
-        accuracy = (pred==labels[:, :1024]).float().sum(dim=1) / labels[:, :1024].shape[1]
+        accuracy = (pred==labels[:, :num_samples]).float().sum(dim=1) / labels[:, :num_samples].shape[1]
         accuracy = accuracy.mean()
-        intersection = (pred * labels[:, :1024]).sum(dim=1)
-        union = (pred + labels[:, :1024]).gt(0).sum(dim=1) + 1e-5
+        intersection = (pred * labels[:, :num_samples]).sum(dim=1)
+        union = (pred + labels[:, :num_samples]).gt(0).sum(dim=1) + 1e-5
+        
         iou = intersection * 1.0 / union
         iou = iou.mean()
 
@@ -94,8 +120,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         metric_logger.update(loss=loss_value)
 
-        metric_logger.update(loss_vol=loss_vol.item())
-        metric_logger.update(loss_near=loss_near.item())
+        metric_logger.update(loss_surf=loss.item())
+        metric_logger.update(loss_near=loss.item())
 
         if loss_kl is not None:
             metric_logger.update(loss_kl=loss_kl.item())

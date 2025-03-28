@@ -26,7 +26,7 @@ category_ids = {
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, transform=None, sampling=True, num_samples=4096, return_surface=True, surface_sampling=True, pc_size=2048, replica=16, use_orig_dataset=False):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=2048, return_surface=True, surface_sampling=True, pc_size=2048, replica=16, use_orig_dataset=False):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -36,10 +36,12 @@ class GarmentCode(data.Dataset):
         self.return_surface = return_surface
         self.surface_sampling = surface_sampling
         self.replica = replica
+        self.force_occupancy = force_occupancy
 
         # Load split file
-        if use_orig_dataset:
-            with open(os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json'), 'r') as f:
+        train_val_test_path = os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json')
+        if os.path.exists(train_val_test_path):
+            with open(train_val_test_path, 'r') as f:
                 train_test_val_split = json.load(f)
                 if split not in train_test_val_split:
                     raise ValueError(f"Split {split} not found. Available: {train_test_val_split.keys()}")
@@ -54,11 +56,11 @@ class GarmentCode(data.Dataset):
         self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
 
         # Parallel processing
-        if False:
+        if self.force_occupancy:
             with mp.Pool(8) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
                 results = list(tqdm.tqdm(pool.imap(self.process_garment, self.mesh_folders), total=len(self.mesh_folders)))
         else:
-             results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders[:100], total=100)]
+             results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]
 
         # Store processed results
         self.models = [res for res in results if res]
@@ -81,23 +83,22 @@ class GarmentCode(data.Dataset):
             body_height = body_info.get('body', {}).get('height', 171.0)
 
         udf_path = os.path.join(subpath, f"{g}_udf.npz")
-        if not os.path.exists(udf_path):
-            print(f"Generating UDF for {model_file}")
+        if not os.path.exists(udf_path) or self.force_occupancy:
+            # print(f"Generating UDF for {model_file}")
             model = tri.load(model_file)
-            udf_inner_points, udf_inner_dists, udf_outer_points, udf_outer_dists = self.generate_udf_points(
+
+            points, udf = self.generate_udf_points(
                 model=model, body_mean=self.mean_body_mean, body_height=body_height
             )
-            print(f"Saving UDF to {udf_path}")
-            np.savez(udf_path, surface_points=udf_inner_points, surface_labels=udf_inner_dists,
-                     outer_points=udf_outer_points, outer_labels=udf_outer_dists)
-            print(f"UDF saved for {g}")
-            del model, udf_inner_points, udf_inner_dists, udf_outer_points, udf_outer_dists
+            # print(f"Saving UDF to {udf_path}")
+            np.savez(udf_path, points=points, labels=udf)
+            del model, points, udf
 
         return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
                 'body_height': body_height, 'body_mean': self.mean_body_mean}
 
 
-    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=50000, threshold=0.01, sample_point_count=25000):
+    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=100000, threshold=0.01, sample_point_count=25000, surface_sample_count=2500):
         '''
         Calculate UDF points for the given model
         '''
@@ -106,19 +107,20 @@ class GarmentCode(data.Dataset):
         model.vertices /= body_height
 
         # Generate UDF points
-        points, sdf = mesh_to_sdf.sample_sdf_near_surface(model, number_of_points=N, surface_point_method='sample', sample_point_count=sample_point_count)
-        
+        query_points = mesh_to_sdf.surface_point_cloud.sample_uniform_points_in_unit_sphere(N)
+        surface_points = model.sample(surface_sample_count)
+        query_points = np.concatenate([query_points, 
+                                       surface_points + np.random.normal(scale=0.01, size=(surface_sample_count, 3)),
+                                       surface_points + np.random.normal(scale=0.005, size=(surface_sample_count, 3)),
+                                       surface_points + np.random.normal(scale=0.001, size=(surface_sample_count, 3)),
+                                       surface_points + np.random.normal(scale=0.0005, size=(surface_sample_count, 3))], axis=0)        
+        sdf = mesh_to_sdf.mesh_to_sdf(mesh=model, query_points=query_points, sample_point_count=50000, surface_point_method="sample")
+
         udf = np.abs(sdf)
+        udf[udf > threshold] = 0
+        udf[udf <= threshold] = 1
 
-        surface_points = points[udf <= threshold]
-        surface_udf = np.zeros(shape=(surface_points.shape[0], )) # udf[udf < threshold] points close to the surface have 0 udf
-
-        outer_points = points[udf > threshold]
-        outer_udf = udf[udf > threshold] - threshold
-
-        print(f"Generated {len(surface_points)} inner points and {len(outer_points)} outer points.")
-
-        return surface_points, surface_udf, outer_points, outer_udf
+        return query_points, udf
 
 
     def __getitem__(self, idx):
@@ -129,55 +131,37 @@ class GarmentCode(data.Dataset):
 
         try:
             with np.load(point_path) as data:
-                surface_points = data['surface_points']
-                surface_labels = data['surface_labels']
-                near_points = data['outer_points']
-                near_labels = data['outer_labels']
-#                print(vol_points.shape, vol_label.shape, near_points.shape, near_label.shape)
-                # exit()
+                points = data["points"]
+                labels = data["labels"]
+                
         except Exception as e:
             print(e)
             print(point_path)
-
-        # with open(point_path.replace('.npz', '.npy'), 'rb') as f:
-        #     scale = np.load(f).item()
 
         if self.return_surface:
             surface = tri.load(model_path).vertices
             surface = surface - self.mean_body_mean
             surface = surface / self.models[idx]['body_height']
             if self.surface_sampling:
+                if surface.shape[0] < self.pc_size:
+                    # If the number of surface points is less than pc_size, pad with repeated points
+                    padding = self.pc_size - surface.shape[0]
+                    surface = np.concatenate([surface, surface[np.random.choice(surface.shape[0], padding, replace=True)]], axis=0)
+                    
+
                 ind = np.random.default_rng().choice(surface.shape[0], self.pc_size, replace=False)
                 surface = surface[ind]
             surface = torch.from_numpy(surface)
 
         if self.sampling:
-            ind = np.random.default_rng().choice(surface_points.shape[0], self.num_samples, replace=False)
-            surface_points = surface_points[ind]
-            surface_labels = surface_labels[ind]
-
-            ind = np.random.default_rng().choice(near_points.shape[0], self.num_samples, replace=False)
-            near_points = near_points[ind]
-            near_labels = near_labels[ind]
+            ind = np.random.default_rng().choice(points.shape[0], self.num_samples * 2, replace=False)
+            points = points[ind]
+            labels = labels[ind]
         
-        surface_points = torch.from_numpy(surface_points)
-        surface_labels = torch.from_numpy(surface_labels).float()
 
-        # if self.split == 'training':
-        near_points = torch.from_numpy(near_points)
-        near_labels = torch.from_numpy(near_labels).float()
-
-        points = torch.cat([surface_points, near_points], dim=0)
-        labels = torch.cat([surface_labels, near_labels], dim=0)
-        # else:
-        #     points = surface_points
-        #     labels = surface_labels
-
-        if self.transform:
-            surface, points = self.transform(surface, points)
-
-#        print(points.shape, labels.shape, surface.shape)
-
+        points = torch.from_numpy(points).float()
+        labels = torch.from_numpy(labels).float()
+        
         if self.return_surface:
             return points.float(), labels.float(), surface.float(), 0    # category is fixed for now
         else:

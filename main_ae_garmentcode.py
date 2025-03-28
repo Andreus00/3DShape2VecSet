@@ -90,6 +90,7 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
+    parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
 
     return parser
 
