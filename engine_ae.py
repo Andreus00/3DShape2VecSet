@@ -55,7 +55,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
             outputs = outputs['logits']
 
-
+            
             loss_vol = criterion(outputs[:, :1024], labels[:, :1024])
             loss_near = criterion(outputs[:, 1024:], labels[:, 1024:])
 

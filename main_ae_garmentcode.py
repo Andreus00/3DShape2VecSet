@@ -64,7 +64,7 @@ def get_args_parser():
                         help='path where to save, empty for no saving')
     parser.add_argument('--log_dir', default='./output/',
                         help='path where to tensorboard log')
-    parser.add_argument('--device', default='cpu',
+    parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--resume', default='',
@@ -76,7 +76,7 @@ def get_args_parser():
                         help='Perform evaluation only')
     parser.add_argument('--dist_eval', action='store_true', default=False,
                         help='Enabling distributed evaluation (recommended during training for faster monitor')
-    parser.add_argument('--num_workers', default=60, type=int)
+    parser.add_argument('--num_workers', default=2, type=int)
     parser.add_argument('--pin_mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')

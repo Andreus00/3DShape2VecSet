@@ -25,70 +25,8 @@ category_ids = {
 }
 
 class GarmentCode(data.Dataset):
-    # def __init__(self, dataset_folder, split, transform=None, sampling=True, num_samples=4096, return_surface=True, surface_sampling=True, pc_size=2048, replica=16):
-        
-    #     self.pc_size = pc_size
 
-    #     self.transform = transform
-    #     self.num_samples = num_samples
-    #     self.sampling = sampling
-    #     self.split = split
-
-    #     self.dataset_folder = dataset_folder
-    #     self.return_surface = return_surface
-    #     self.surface_sampling = surface_sampling
-
-    #     self.dataset_folder = dataset_folder
-
-    #     # load split. garments are loaded in the format of "garments_5000_xx/default_body/data/rand_XXXXXXXXXXX"
-    #     garments = None
-    #     with open(os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json'), 'r') as f:
-    #         train_test_val_split = json.load(f)
-    #         if split not in train_test_val_split:
-    #             raise ValueError(f"Split {split} not found in the train-test-val split file. Available splits are {train_test_val_split.keys()}")
-    #         garments = [sample.replace("default_body", "default_body/data") for sample in train_test_val_split[split] if "default_body" in sample]
-        
-    #     # add the full path to the garment folders
-    #     # the format will be "dataset_folder/GarmentCodeData_v2/garments_5000_xx/default_body/data/rand_XXXXXXXXXXX"
-    #     self.mesh_folders = [os.path.join(dataset_folder, "GarmentCodeData_v2", garment) for garment in garments]
-
-    #     self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
-    #     self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
-
-    #     pbar = tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))
-
-    #     self.models = []
-
-    #     for subpath in pbar:
-    #         # get the garment name
-    #         g = subpath.split('/')[-1]
-    #         assert os.path.isdir(subpath)
-    #         model_file = os.path.join(subpath, f"{g}_sim.ply")
-    #         if not os.path.exists(model_file):
-    #             print(f"Model {model_file} does not exist")
-    #             continue
-
-    #         body_info_path = os.path.join(subpath, f"{g}_body_measurements.yaml")
-
-    #         body_height = 171.0
-    #         with open(body_info_path, 'r') as f:
-    #             body_info = yaml.load(f, Loader=yaml.FullLoader)
-    #             body_height = body_info.get('body', None).get('height', 171.0)
-
-    #         udf_path = os.path.join(subpath, f"{g}_udf.npz")
-    #         if not os.path.exists(udf_path):
-    #             pbar.set_description(f"Generating UDF for {g}")
-    #             # Load the model and generate UDF points
-    #             model = tri.load(model_file)
-    #             udf_inner_points, udf_inner_dists, udf_outer_points, udf_outer_dists = self.generate_udf_points(model=model, body_mean=self.mean_body_mean, body_height=body_height)  # todo: fix the default body
-    #             np.savez(udf_path, vol_points=udf_inner_points, vol_label=udf_inner_dists, near_points=udf_outer_points, near_label=udf_outer_dists)
-    #             del model, body_info, udf_inner_points, udf_inner_dists, udf_outer_points, udf_outer_dists
-            
-    #         self.models.append({'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path, 'body_height': body_height, 'body_mean': self.mean_body_mean})
-
-    #     self.replica = replica
-
-    def __init__(self, dataset_folder, split, transform=None, sampling=True, num_samples=4096, return_surface=True, surface_sampling=True, pc_size=2048, replica=16):
+    def __init__(self, dataset_folder, split, transform=None, sampling=True, num_samples=4096, return_surface=True, surface_sampling=True, pc_size=2048, replica=16, use_orig_dataset=False):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -100,28 +38,21 @@ class GarmentCode(data.Dataset):
         self.replica = replica
 
         # Load split file
-        with open(os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json'), 'r') as f:
-            train_test_val_split = json.load(f)
-            if split not in train_test_val_split:
-                raise ValueError(f"Split {split} not found. Available: {train_test_val_split.keys()}")
-            garments = [sample.replace("default_body", "default_body/data") for sample in train_test_val_split[split] if "default_body" in sample]
-
-        # Build full paths
-        self.mesh_folders = [os.path.join(dataset_folder, "GarmentCodeData_v2", garment) for garment in garments]
-
+        if use_orig_dataset:
+            with open(os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json'), 'r') as f:
+                train_test_val_split = json.load(f)
+                if split not in train_test_val_split:
+                    raise ValueError(f"Split {split} not found. Available: {train_test_val_split.keys()}")
+                garments = [sample.replace("default_body", "default_body/data") for sample in train_test_val_split[split] if "default_body" in sample]
+            # Build full paths
+            self.mesh_folders = [os.path.join(dataset_folder, "GarmentCodeData_v2", garment) for garment in garments]
+        else:
+            garments_path = os.path.join(dataset_folder, "GarmentCodeData_v2", "garments_5000_0", "default_body", "data")
+            self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
         self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
 
-
-        # Parallel processing using Joblib
-        # num_workers = min(32, os.cpu_count())  # Use at most 32 workers
-        # results = Parallel(n_jobs=num_workers, backend="loky")(
-        #     delayed(self.process_garment)(subpath) for subpath in tqdm.tqdm(self.mesh_folders)
-        # )
-
-        # results = [self.process_garment(subpath) for subpath in tqdm.tqdm(self.mesh_folders)]
-        
         # Parallel processing
         if False:
             with mp.Pool(8) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
@@ -157,8 +88,8 @@ class GarmentCode(data.Dataset):
                 model=model, body_mean=self.mean_body_mean, body_height=body_height
             )
             print(f"Saving UDF to {udf_path}")
-            np.savez_compressed(udf_path, vol_points=udf_inner_points, vol_label=udf_inner_dists,
-                     near_points=udf_outer_points, near_label=udf_outer_dists)
+            np.savez(udf_path, surface_points=udf_inner_points, surface_labels=udf_inner_dists,
+                     outer_points=udf_outer_points, outer_labels=udf_outer_dists)
             print(f"UDF saved for {g}")
             del model, udf_inner_points, udf_inner_dists, udf_outer_points, udf_outer_dists
 
@@ -166,7 +97,7 @@ class GarmentCode(data.Dataset):
                 'body_height': body_height, 'body_mean': self.mean_body_mean}
 
 
-    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=50000, threshold=0.01, sample_point_count=20000):
+    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=50000, threshold=0.01, sample_point_count=25000):
         '''
         Calculate UDF points for the given model
         '''
@@ -179,13 +110,15 @@ class GarmentCode(data.Dataset):
         
         udf = np.abs(sdf)
 
-        inner_points = points[udf < threshold]
-        inner_udf = udf[udf < threshold]
+        surface_points = points[udf <= threshold]
+        surface_udf = np.zeros(shape=(surface_points.shape[0], )) # udf[udf < threshold] points close to the surface have 0 udf
 
         outer_points = points[udf > threshold]
-        outer_udf = udf[udf > threshold]
+        outer_udf = udf[udf > threshold] - threshold
 
-        return inner_points, inner_udf, outer_points, outer_udf
+        print(f"Generated {len(surface_points)} inner points and {len(outer_points)} outer points.")
+
+        return surface_points, surface_udf, outer_points, outer_udf
 
 
     def __getitem__(self, idx):
@@ -196,10 +129,10 @@ class GarmentCode(data.Dataset):
 
         try:
             with np.load(point_path) as data:
-                vol_points = data['vol_points']
-                vol_label = data['vol_label']
-                near_points = data['near_points']
-                near_label = data['near_label']
+                surface_points = data['surface_points']
+                surface_labels = data['surface_labels']
+                near_points = data['outer_points']
+                near_labels = data['outer_labels']
 #                print(vol_points.shape, vol_label.shape, near_points.shape, near_label.shape)
                 # exit()
         except Exception as e:
@@ -211,7 +144,6 @@ class GarmentCode(data.Dataset):
 
         if self.return_surface:
             surface = tri.load(model_path).vertices
-#            print("surface vertices: ", surface.shape)
             surface = surface - self.mean_body_mean
             surface = surface / self.models[idx]['body_height']
             if self.surface_sampling:
@@ -220,37 +152,26 @@ class GarmentCode(data.Dataset):
             surface = torch.from_numpy(surface)
 
         if self.sampling:
-            ind = np.random.default_rng().choice(vol_points.shape[0], self.num_samples, replace=False)
-            vol_points = vol_points[ind]
-            vol_label = vol_label[ind]
+            ind = np.random.default_rng().choice(surface_points.shape[0], self.num_samples, replace=False)
+            surface_points = surface_points[ind]
+            surface_labels = surface_labels[ind]
 
             ind = np.random.default_rng().choice(near_points.shape[0], self.num_samples, replace=False)
             near_points = near_points[ind]
-            near_label = near_label[ind]
-        else:
-#            print("RESIZING")
-            def pad_to_15000(arr: np.ndarray) -> np.ndarray:
-                if arr.size >= 15000:
-                    return arr[:15000]  # Truncate if necessary
-                repeats = np.tile(arr, 15000 // arr.size + 1)  # Repeat elements
-                return repeats[:15000]  # Trim to exactly 30,000 elements
-            vol_points = pad_to_15000(vol_points)
-            vol_label = pad_to_15000(vol_label)
-            near_points = pad_to_15000(near_points)
-            near_label = pad_to_15000(near_label)
+            near_labels = near_labels[ind]
         
-        vol_points = torch.from_numpy(vol_points)
-        vol_label = torch.from_numpy(vol_label).float()
+        surface_points = torch.from_numpy(surface_points)
+        surface_labels = torch.from_numpy(surface_labels).float()
 
-        if self.split == 'training':
-            near_points = torch.from_numpy(near_points)
-            near_label = torch.from_numpy(near_label).float()
+        # if self.split == 'training':
+        near_points = torch.from_numpy(near_points)
+        near_labels = torch.from_numpy(near_labels).float()
 
-            points = torch.cat([vol_points, near_points], dim=0)
-            labels = torch.cat([vol_label, near_label], dim=0)
-        else:
-            points = vol_points
-            labels = vol_label
+        points = torch.cat([surface_points, near_points], dim=0)
+        labels = torch.cat([surface_labels, near_labels], dim=0)
+        # else:
+        #     points = surface_points
+        #     labels = surface_labels
 
         if self.transform:
             surface, points = self.transform(surface, points)
