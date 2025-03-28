@@ -27,5 +27,5 @@ pwd
 # - determine commandline arguments for `srun` calls
 conda activate shape2vec
 # Compute Phase
-srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
-
+# srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
+srun env -u SLURM_PROCID python3 -m torch.distributed.launch main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy
