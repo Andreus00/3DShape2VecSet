@@ -40,9 +40,6 @@ def build_shape_surface_occupancy_dataset(split, args):
 
 def load_garmentcodedata(split, args):
     if split == 'training':
-        # transform = #transforms.Compose([
-        # transform = AxisScaling((0.75, 1.25), True)
-        # ])
         return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, sampling=True, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
     elif split == 'validation':
         # return ShapeNet(args.data_path, split=split, transform=None, sampling=True, num_samples=1024, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)

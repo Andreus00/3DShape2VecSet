@@ -30,7 +30,7 @@ def get_args_parser():
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
     # Model parameters
-    parser.add_argument('--model', default='ae_garments', type=str, metavar='MODEL',
+    parser.add_argument('--model', default='kl_garments', type=str, metavar='MODEL',
                         help='Name of model to train')
 
     parser.add_argument('--point_cloud_size', default=4096, type=int,
