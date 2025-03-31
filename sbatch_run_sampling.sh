@@ -4,7 +4,7 @@
 
 #SBATCH -J garment-encoder                # Job name
 #SBATCH --ntasks=1                 # Number of tasks
-#SBATCH --cpus-per-task=16          # Number of CPU cores per task
+#SBATCH --cpus-per-task=32          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
 #SBATCH --partition=cpu-galvani   # Which partition will run your job
 #SBATCH --time=0-10:00             # Allowed runtime in D-HH:MM
@@ -25,6 +25,7 @@ pwd
 # - loads virtual envs, like with anaconda
 # - set environment variables
 # - determine commandline arguments for `srun` calls
+source ~/.bashrc
 conda activate shape2vec
 # Compute Phase
 srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  

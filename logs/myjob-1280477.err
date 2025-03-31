@@ -1,30 +1,0 @@
-/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
-  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
-  0%|          | 0/100 [00:00<?, ?it/s] 22%|██▏       | 22/100 [00:00<00:00, 212.72it/s] 47%|████▋     | 47/100 [00:00<00:00, 228.44it/s] 73%|███████▎  | 73/100 [00:00<00:00, 241.56it/s] 99%|█████████▉| 99/100 [00:00<00:00, 248.14it/s]100%|██████████| 100/100 [00:00<00:00, 241.88it/s]
-  0%|          | 0/100 [00:00<?, ?it/s] 20%|██        | 20/100 [00:00<00:00, 192.27it/s] 40%|████      | 40/100 [00:00<00:00, 192.63it/s] 60%|██████    | 60/100 [00:00<00:00, 190.92it/s] 80%|████████  | 80/100 [00:00<00:00, 189.35it/s]100%|██████████| 100/100 [00:00<00:00, 192.25it/s]100%|██████████| 100/100 [00:00<00:00, 191.62it/s]
-/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/util/misc.py:251: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
-  self._scaler = torch.cuda.amp.GradScaler()
-/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/engine_ae.py:48: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
-  with torch.cuda.amp.autocast(enabled=False):
-Traceback (most recent call last):
-  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/main_ae_garmentcode.py", line 257, in <module>
-    main(args)
-  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/main_ae_garmentcode.py", line 211, in main
-    train_stats = train_one_epoch(
-  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/engine_ae.py", line 49, in train_one_epoch
-    outputs = model(surface, points)
-  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/models_ae.py", line 397, in forward
-    kl, x = self.encode(pc)
-  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/models_ae.py", line 353, in encode
-    idx = fps(pos, batch, ratio=ratio)
-  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch_cluster/fps.py", line 107, in fps
-    return torch.ops.torch_cluster.fps(src, ptr_vec, r, random_start)
-  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/_ops.py", line 1123, in __call__
-    return self._op(*args, **(kwargs or {}))
-RuntimeError: Not compiled with CUDA support
-srun: error: galvani-cn121: task 0: Exited with exit code 1
-srun: Terminating StepId=1280477.0
