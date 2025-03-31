@@ -61,46 +61,19 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
             loss = criterion(outputs, labels)
 
-
-            # if data_iter_step % 300 == 0:
-            #     # Calculate the error between outputs and labels
-            #     outputs = torch.sigmoid(outputs)
-            #     error = torch.abs(outputs[0] - labels[0])
-
-
-            #     # Plot the points with error as color
-            #     import matplotlib.pyplot as plt
-
-            #     points_np = points.cpu().numpy()
-            #     error_np = error.detach().cpu().numpy()
-
-            #     fig = plt.figure(figsize=(10, 7))
-            #     ax = fig.add_subplot(111, projection='3d')
-
-            #     # Scatter plot with error as color
-            #     scatter = ax.scatter(points_np[0, :, 0], points_np[0, :, 1], points_np[0, :, 2], c=error_np, cmap='viridis')
-            #     plt.colorbar(scatter, ax=ax, label='Error')
-            #     plt.title('Error Visualization')
-            #     plt.savefig("reconstruction_error.png")
-
-            #     print("\nINNER POINTS", points[0, :10], "\nINNER OUTS", outputs[0, :10], "\nINNER LABELS", labels[0, :10])
-            #     print("\n\nOUTER POINTS", points[0, -10:], "\nOUTER OUTS", outputs[0, -10:], "\nOUTER LABELS", labels[0, -10:])
-
             
             if loss_kl is not None:
                 loss = loss + kl_weight * loss_kl
 
         loss_value = loss.item()
 
-        threshold = 0
+        threshold = 0.5
 
-        pred = torch.zeros_like(outputs[:, :num_samples])
-        pred[outputs[:, :num_samples]>=threshold] = 1
+        pred = torch.zeros_like(outputs)
+        pred[torch.sigmoid(outputs)>=threshold] = 1
 
-        accuracy = (pred==labels[:, :num_samples]).float().sum(dim=1) / labels[:, :num_samples].shape[1]
-        accuracy = accuracy.mean()
-        intersection = (pred * labels[:, :num_samples]).sum(dim=1)
-        union = (pred + labels[:, :num_samples]).gt(0).sum(dim=1) + 1e-5
+        intersection = (pred * labels).sum(dim=1)
+        union = (pred + labels).gt(0).sum(dim=1) + 1e-5
         
         iou = intersection * 1.0 / union
         iou = iou.mean()
