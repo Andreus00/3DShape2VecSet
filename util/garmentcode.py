@@ -61,7 +61,7 @@ class GarmentCode(data.Dataset):
 
         # Parallel processing
         if self.force_occupancy:
-            with mp.Pool(32) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
+            with mp.Pool(16) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
                 results = list(tqdm.tqdm(pool.imap(self.process_garment, self.mesh_folders), total=len(self.mesh_folders)))
         else:
              results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]
@@ -108,7 +108,7 @@ class GarmentCode(data.Dataset):
                 'body_height': body_height, 'body_mean': self.mean_body_mean}
 
 
-    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=100000, threshold=0.005, surface_sample_count=50000):
+    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=250000, threshold=0.005, surface_sample_count=125000):
         '''
         Calculate UDF points for the given model
         '''
@@ -122,8 +122,6 @@ class GarmentCode(data.Dataset):
         surface_points = tri.sample.sample_surface(model, surface_sample_count)[0]
 
         query_points = np.concatenate([query_points, surface_points,
-                                       surface_points + np.random.normal(scale=0.1, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.01, size=(surface_sample_count, 3)),
                                        surface_points + np.random.normal(scale=0.005, size=(surface_sample_count, 3)),
                                        surface_points + np.random.normal(scale=0.00025, size=(surface_sample_count, 3)),], axis=0)
         sdf = mesh_to_sdf.mesh_to_sdf(mesh=model, query_points=query_points, sample_point_count=100000, surface_point_method="sample")
