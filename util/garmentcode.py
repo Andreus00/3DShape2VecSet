@@ -50,6 +50,11 @@ class GarmentCode(data.Dataset):
         else:
             garments_path = os.path.join(dataset_folder, "GarmentCodeData_v2", "garments_5000_0", "default_body", "data")
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
+            split_idx = (len(self.mesh_folders) * 80) // 100
+            if self.split == "training":
+                self.mesh_folders = self.mesh_folders[:split_idx]
+            elif self.split == "validation":
+                self.mesh_folders = self.mesh_folders[split_idx:]
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
         self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
@@ -86,18 +91,24 @@ class GarmentCode(data.Dataset):
             # print(f"Generating UDF for {model_file}")
             model = tri.load(model_file)
 
-            inner_points, outer_points = self.generate_udf_points(
+            random_points, near_points, udf_random, udf_near = self.generate_udf_points(
                 model=model, body_mean=self.mean_body_mean, body_height=body_height
             )
             # print(f"Saving UDF to {udf_path}")
-            np.savez(udf_path, inner_points=inner_points, outer_points=outer_points)
-            del model, inner_points, outer_points
+            np.savez(udf_path, random_points=random_points, near_points=near_points, udf_random=udf_random, udf_near=udf_near)
+            del model, random_points, near_points, udf_random, udf_near
+            # inner_points, outer_points = self.generate_udf_points(
+            #     model=model, body_mean=self.mean_body_mean, body_height=body_height
+            # )
+            # # print(f"Saving UDF to {udf_path}")
+            # np.savez(udf_path, inner_points=inner_points, outer_points=outer_points)
+            # del model, inner_points, outer_points
 
         return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
                 'body_height': body_height, 'body_mean': self.mean_body_mean}
 
 
-    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=20000, threshold=0.005, surface_sample_count=50000):
+    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=100000, threshold=0.005, surface_sample_count=50000):
         '''
         Calculate UDF points for the given model
         '''
@@ -112,22 +123,46 @@ class GarmentCode(data.Dataset):
 
         query_points = np.concatenate([query_points, surface_points,
                                        surface_points + np.random.normal(scale=0.1, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.5, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.05, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.001, size=(surface_sample_count, 3)),
+                                       surface_points + np.random.normal(scale=0.01, size=(surface_sample_count, 3)),
                                        surface_points + np.random.normal(scale=0.005, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.0005, size=(surface_sample_count, 3)),
                                        surface_points + np.random.normal(scale=0.00025, size=(surface_sample_count, 3)),], axis=0)
-        sdf = mesh_to_sdf.mesh_to_sdf(mesh=model, query_points=query_points, sample_point_count=50000, surface_point_method="sample")
+        sdf = mesh_to_sdf.mesh_to_sdf(mesh=model, query_points=query_points, sample_point_count=100000, surface_point_method="sample")
 
         udf = np.abs(sdf)
 
-        mask = udf <= threshold
+        return query_points[:N], query_points[N:], udf[:N], udf[N:]
 
-        inner_points = query_points[mask]
-        outer_points = query_points[~mask]
+    # def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=20000, threshold=0.005, surface_sample_count=50000):
+    #     '''
+    #     Calculate UDF points for the given model
+    #     '''
+        
+    #     # Normalize points based on body
+    #     model.vertices -= body_mean
+    #     model.vertices /= body_height
 
-        return inner_points, outer_points
+    #     # Generate UDF points
+    #     query_points = mesh_to_sdf.surface_point_cloud.sample_uniform_points_in_unit_sphere(N)
+    #     surface_points = tri.sample.sample_surface(model, surface_sample_count)[0]
+
+    #     query_points = np.concatenate([query_points, surface_points,
+    #                                    surface_points + np.random.normal(scale=0.1, size=(surface_sample_count, 3)),
+    #                                    surface_points + np.random.normal(scale=0.5, size=(surface_sample_count, 3)),
+    #                                    surface_points + np.random.normal(scale=0.05, size=(surface_sample_count, 3)),
+    #                                    surface_points + np.random.normal(scale=0.001, size=(surface_sample_count, 3)),
+    #                                    surface_points + np.random.normal(scale=0.005, size=(surface_sample_count, 3)),
+    #                                    surface_points + np.random.normal(scale=0.0005, size=(surface_sample_count, 3)),
+    #                                    surface_points + np.random.normal(scale=0.00025, size=(surface_sample_count, 3)),], axis=0)
+    #     sdf = mesh_to_sdf.mesh_to_sdf(mesh=model, query_points=query_points, sample_point_count=50000, surface_point_method="sample")
+
+    #     udf = np.abs(sdf)
+
+    #     mask = udf <= threshold
+
+    #     inner_points = query_points[mask]
+    #     outer_points = query_points[~mask]
+
+    #     return inner_points, outer_points
 
 
     def __getitem__(self, idx):
@@ -138,8 +173,10 @@ class GarmentCode(data.Dataset):
 
         try:
             with np.load(point_path) as data:
-                inner_points = data["inner_points"]
-                outer_points = data["outer_points"]
+                random_points = data["random_points"]
+                udf_random = data["udf_random"]
+                near_points = data["near_points"]
+                udf_near = data["udf_near"]
                 
         except Exception as e:
             print(e)
@@ -154,16 +191,14 @@ class GarmentCode(data.Dataset):
                 surface = torch.from_numpy(surface.vertices).float()
 
         if self.sampling:
-            ind_inner = np.random.default_rng().choice(inner_points.shape[0], self.num_samples//2, replace=False)
-            ind_outer = np.random.default_rng().choice(outer_points.shape[0], self.num_samples//2, replace=False)
-            points = np.concatenate([inner_points[ind_inner], outer_points[ind_outer]])
+            ind_random_points = np.random.default_rng().choice(random_points.shape[0], self.num_samples//2, replace=False)
+            ind_near_points = np.random.default_rng().choice(near_points.shape[0], self.num_samples//2, replace=False)
+            points = np.concatenate([random_points[ind_random_points], near_points[ind_near_points]])
 
-            labels = np.zeros((points.shape[0],))
-            labels[:ind_inner.shape[0]] = 1
+            labels = np.concatenate([udf_random[ind_random_points], udf_near[ind_near_points]])
         else:
-            points = np.concatenate([inner_points, outer_points])
-            labels = np.zeros((points.shape[0],))
-            labels[:inner_points.shape[0]] = 1
+            points = np.concatenate([random_points, near_points])
+            labels = np.concatenate([udf_random, udf_near])
         
         # Shuffle points and labels
 
