@@ -61,7 +61,7 @@ class GarmentCode(data.Dataset):
 
         # Parallel processing
         if self.force_occupancy:
-            with mp.Pool(16) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
+            with mp.Pool(32) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
                 results = list(tqdm.tqdm(pool.imap(self.process_garment, self.mesh_folders), total=len(self.mesh_folders)))
         else:
              results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]

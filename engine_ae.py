@@ -118,6 +118,26 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             log_writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
             log_writer.add_scalar('lr', max_lr, epoch_1000x)
 
+        if torch.rand((1,)).item() > 0.99:
+            import matplotlib.pyplot as plt
+
+            # Assuming the surface is a 3D grid and outputs are the predicted SDF values
+            points_np = points[0].detach().cpu().numpy()
+            outputs_np = outputs[0].detach().cpu().numpy()
+            print("points_np", points_np.shape)
+            print("outputs_np", outputs_np.shape)
+
+            # Create a 3D plot for the zero-level set
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+            # Extract the zero-level set (isosurface where SDF = 0)
+            zero_level_set = np.abs(outputs_np) < 1e-3
+            xyz = points_np[zero_level_set]
+
+            ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c='r', marker='o', s=1)
+            ax.set_title("Zero-Level Set")
+            plt.savefig("zero-level-set-train.png")
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
@@ -169,6 +189,25 @@ def evaluate(data_loader, model, device):
         batch_size = points.shape[0]
         metric_logger.update(loss=loss.item())
         metric_logger.meters['iou'].update(iou.item(), n=batch_size)
+
+        if torch.rand((1,)).item() > 0.98 and batch_size > 0:
+            import matplotlib.pyplot as plt
+
+            # Assuming the surface is a 3D grid and outputs are the predicted SDF values
+            points_np = points[0].detach().cpu().numpy()
+            outputs_np = outputs[0].detach().cpu().numpy()
+
+            # Create a 3D plot for the zero-level set
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+            # Extract the zero-level set (isosurface where UDF = 0)
+            zero_level_set = np.abs(outputs_np) < 1e-3
+            xyz = points_np[zero_level_set]
+
+            ax.scatter(xyz[:, 0], xyz[:, 1], xyz[:, 2], c='r', marker='o', s=1)
+            ax.set_title("Zero-Level Set")
+            plt.savefig("zero-level-set-test.png")
 
         if loss_kl is not None:
             metric_logger.update(loss_kl=loss_kl.item())
