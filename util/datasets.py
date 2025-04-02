@@ -40,12 +40,12 @@ def build_shape_surface_occupancy_dataset(split, args):
 
 def load_garmentcodedata(split, args):
     if split == 'training':
-        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, sampling=True, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, sampling=True, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist)
     elif split == 'validation':
-        # return ShapeNet(args.data_path, split=split, transform=None, sampling=True, num_samples=1024, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
-        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
+        # return ShapeNet(args.data_path, split=split, transform=None, sampling=True, num_samples=1024, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist)
     else:
-        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist)
 
 
 if __name__ == '__main__':

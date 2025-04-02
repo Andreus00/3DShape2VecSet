@@ -16,8 +16,11 @@ import mesh_to_sdf
 import tqdm
 import json
 
+import open3d as o3d
+
 import multiprocessing as mp
 
+from .process_udf import sample_udf_from_mesh, get_tensor_pcd_from_o3d
 
 category_ids = {
     # todo: add category ids if necessary
@@ -25,7 +28,7 @@ category_ids = {
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=8192, return_surface=True, surface_sampling=True, pc_size=4096, replica=1):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=16_384, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -36,6 +39,7 @@ class GarmentCode(data.Dataset):
         self.surface_sampling = surface_sampling
         self.replica = replica
         self.force_occupancy = force_occupancy
+        self.max_dist = max_dist
 
         # Load split file
         train_val_test_path = os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json')
@@ -60,12 +64,7 @@ class GarmentCode(data.Dataset):
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
         self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
 
-        # Parallel processing
-        if self.force_occupancy:
-            with mp.Pool(16) as pool: # processes=mp.cpu_count()/3 * 2) as pool:
-                results = list(tqdm.tqdm(pool.imap(self.process_garment, self.mesh_folders), total=len(self.mesh_folders)))
-        else:
-             results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]
+        results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]
 
         # Store processed results
         self.models = [res for res in results if res]
@@ -89,51 +88,20 @@ class GarmentCode(data.Dataset):
 
         udf_path = os.path.join(subpath, f"{g}_udf.npz")
         if not os.path.exists(udf_path) or self.force_occupancy:
-            # print(f"Generating UDF for {model_file}")
-            model = tri.load(model_file)
 
-            inner_points, outer_points = self.generate_udf_points(
-                model=model, body_mean=self.mean_body_mean, body_height=body_height
-            )
+            mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
+            mesh_o3d.translate((-self.mean_body_mean[0].item(), -self.mean_body_mean[1].item(), -self.mean_body_mean[2].item()))
+            mesh_o3d.scale(1/body_height, center=np.zeros((3,1)))
+
+            surface, points, labels, gradients = sample_udf_from_mesh(mesh_o3d, self.max_dist)
+
             # print(f"Saving UDF to {udf_path}")
-            np.savez(udf_path, inner_points=inner_points, outer_points=outer_points)
-            del model, inner_points, outer_points
+            np.savez(udf_path, surface=surface, points=points, labels=labels, gradients=gradients)
+            del surface, points, labels, gradients
 
         return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
                 'body_height': body_height, 'body_mean': self.mean_body_mean}
 
-
-    def generate_udf_points(self, model: tri.Trimesh, body_mean, body_height, N=20000, threshold=0.005, surface_sample_count=50000):
-        '''
-        Calculate UDF points for the given model
-        '''
-        
-        # Normalize points based on body
-        model.vertices -= body_mean
-        model.vertices /= body_height
-
-        # Generate UDF points
-        query_points = mesh_to_sdf.surface_point_cloud.sample_uniform_points_in_unit_sphere(N)
-        surface_points = tri.sample.sample_surface(model, surface_sample_count)[0]
-
-        query_points = np.concatenate([query_points, surface_points,
-                                       surface_points + np.random.normal(scale=0.1, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.5, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.05, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.001, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.005, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.0005, size=(surface_sample_count, 3)),
-                                       surface_points + np.random.normal(scale=0.00025, size=(surface_sample_count, 3)),], axis=0)
-        sdf = mesh_to_sdf.mesh_to_sdf(mesh=model, query_points=query_points, sample_point_count=50000, surface_point_method="sample")
-
-        udf = np.abs(sdf)
-
-        mask = udf <= threshold
-
-        inner_points = query_points[mask]
-        outer_points = query_points[~mask]
-
-        return inner_points, outer_points
 
 
     def __getitem__(self, idx):
@@ -144,32 +112,26 @@ class GarmentCode(data.Dataset):
 
         try:
             with np.load(point_path) as data:
-                inner_points = data["inner_points"]
-                outer_points = data["outer_points"]
+                points = data["points"]
+                labels = data["labels"]
+                surface = data["surface"]
                 
         except Exception as e:
             print(e)
             print(point_path)
 
         if self.return_surface:
-            surface = tri.load(model_path)
-            surface.vertices = (surface.vertices - self.mean_body_mean) / self.models[idx]['body_height']
+            surface = (surface - self.mean_body_mean) / self.models[idx]['body_height']
             if self.surface_sampling:
-                surface = torch.from_numpy(tri.sample.sample_surface(surface, self.pc_size)[0]).float()
+                idxs = np.random.default_rng().choice(surface.shape[0], self.pc_size, replace=False)
+                surface = torch.from_numpy(surface[idxs]).float()
             else:
                 surface = torch.from_numpy(surface.vertices).float()
 
         if self.sampling:
-            ind_inner = np.random.default_rng().choice(inner_points.shape[0], self.num_samples//2, replace=False)
-            ind_outer = np.random.default_rng().choice(outer_points.shape[0], self.num_samples//2, replace=False)
-            points = np.concatenate([inner_points[ind_inner], outer_points[ind_outer]])
-
-            labels = np.zeros((points.shape[0],))
-            labels[:ind_inner.shape[0]] = 1
-        else:
-            points = np.concatenate([inner_points, outer_points])
-            labels = np.zeros((points.shape[0],))
-            labels[:inner_points.shape[0]] = 1
+            idxs = np.random.default_rng().choice(points.shape[0], self.num_samples, replace=False)
+            points = points[idxs]
+            labels = labels[idxs]
         
         # Shuffle points and labels
 

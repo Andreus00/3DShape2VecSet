@@ -27,8 +27,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
-    num_samples = 2048
-
     accum_iter = args.accum_iter
 
     optimizer.zero_grad()
