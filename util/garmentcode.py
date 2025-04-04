@@ -17,7 +17,7 @@ import tqdm
 import json
 
 import open3d as o3d
-
+from zipfile import BadZipFile
 import multiprocessing as mp
 
 from .process_udf import sample_udf_from_mesh, get_tensor_pcd_from_o3d
@@ -50,6 +50,17 @@ def process_garment_worker(args, mean_body_mean, force_occupancy, max_dist):
 
     udf_path = os.path.join(subpath, f"{g}_udf.npz")
     if not os.path.exists(udf_path) or force_occupancy:
+
+        if os.path.exists(udf_path):
+            try:
+                with np.load(udf_path) as data:
+                    if "surface" in data and "points" in data and "labels" in data and "gradients" in data:
+                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
+                                'body_height': body_height, 'body_mean': mean_body_mean}
+            except BadZipFile as e:
+                print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
+                os.remove(udf_path)
+
         mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
         mesh_o3d.translate((-mean_body_mean[0].item(), -mean_body_mean[1].item(), -mean_body_mean[2].item()))
         mesh_o3d.scale(1 / body_height, center=np.zeros((3, 1)))
@@ -147,6 +158,13 @@ class GarmentCode(data.Dataset):
 
         udf_path = os.path.join(subpath, f"{g}_udf.npz")
         if not os.path.exists(udf_path) or self.force_occupancy:
+
+            if os.path.exists(udf_path):
+                with np.load(udf_path) as data:
+                    if "surface" in data and "points" in data and "labels" in data and "gradients" in data:
+                        print(f"UDF already exists for {model_file}. Skipping.")
+                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
+                                'body_height': body_height, 'body_mean': self.mean_body_mean}
 
             mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
             mesh_o3d.translate((-self.mean_body_mean[0].item(), -self.mean_body_mean[1].item(), -self.mean_body_mean[2].item()))
