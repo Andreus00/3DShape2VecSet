@@ -25,6 +25,47 @@ from .process_udf import sample_udf_from_mesh, get_tensor_pcd_from_o3d
 category_ids = {
     # todo: add category ids if necessary
 }
+import torch.multiprocessing as mp
+from functools import partial
+
+def process_garment_worker(args, mean_body_mean, force_occupancy, max_dist):
+    """Processes a single garment on a specific GPU."""
+    subpath, gpu_id = args
+    torch.cuda.set_device(gpu_id)
+
+    g = subpath.split('/')[-1]
+    if not os.path.isdir(subpath):
+        return None
+
+    model_file = os.path.join(subpath, f"{g}_sim.ply")
+    if not os.path.exists(model_file):
+        print(f"Model {model_file} does not exist")
+        return None
+
+    body_info_path = os.path.join(subpath, f"{g}_body_measurements.yaml")
+    body_height = 171.0
+    with open(body_info_path, 'r') as f:
+        body_info = yaml.load(f, Loader=yaml.FullLoader)
+        body_height = body_info.get('body', {}).get('height', 171.0)
+
+    udf_path = os.path.join(subpath, f"{g}_udf.npz")
+    if not os.path.exists(udf_path) or force_occupancy:
+        mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
+        mesh_o3d.translate((-mean_body_mean[0].item(), -mean_body_mean[1].item(), -mean_body_mean[2].item()))
+        mesh_o3d.scale(1 / body_height, center=np.zeros((3, 1)))
+
+        surface, points, labels, gradients = sample_udf_from_mesh(mesh_o3d, max_dist)
+        np.savez(udf_path, surface=surface, points=points, labels=labels, gradients=gradients)
+        del surface, points, labels, gradients
+
+    return {
+        'model': model_file,
+        'point_path': udf_path,
+        'body_info_path': body_info_path,
+        'body_height': body_height,
+        'body_mean': mean_body_mean
+    }
+
 
 class GarmentCode(data.Dataset):
 
@@ -64,7 +105,25 @@ class GarmentCode(data.Dataset):
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
         self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
 
-        results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]
+        # Parallen gpu running
+        
+        world_size = torch.cuda.device_count()
+        print(f"Using {world_size} GPUs")
+
+        with mp.get_context("spawn").Pool(processes=world_size) as pool:
+            results = list(tqdm.tqdm(
+                pool.imap_unordered(
+                    partial(
+                        process_garment_worker,
+                        mean_body_mean=self.mean_body_mean,
+                        force_occupancy=self.force_occupancy,
+                        max_dist=self.max_dist,
+                    ),
+                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
+                ),
+                total=len(self.mesh_folders)
+            ))
+        # results = [self.process_garment(el) for el in tqdm.tqdm(self.mesh_folders, total=len(self.mesh_folders))]
 
         # Store processed results
         self.models = [res for res in results if res]
