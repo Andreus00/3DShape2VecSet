@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1                 # Number of tasks
 #SBATCH --cpus-per-task=32          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
-#SBATCH --partition=2080-galvani   # Which partition will run your job
+#SBATCH --partition=a100-galvani   # Which partition will run your job
 #SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=50G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
 #SBATCH --gres=gpu:8
@@ -29,6 +29,6 @@ source ~/.bashrc
 conda activate shape2vec
 # Compute Phase
 # srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
-srun env -u SLURM_PROCID python3 -m torch.distributed.launch main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --save_every 1 --batch_size 4 --accum_iter 8
+srun env -u SLURM_PROCID python3 -m torch.distributed.launch main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --save_every 1 --batch_size 4 --accum_iter 8 --force_occupancy
 
 conda deactivate
