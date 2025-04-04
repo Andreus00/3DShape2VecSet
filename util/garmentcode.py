@@ -92,9 +92,7 @@ class GarmentCode(data.Dataset):
             mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
             mesh_o3d.translate((-self.mean_body_mean[0].item(), -self.mean_body_mean[1].item(), -self.mean_body_mean[2].item()))
             mesh_o3d.scale(1/body_height, center=np.zeros((3,1)))
-
             surface, points, labels, gradients = sample_udf_from_mesh(mesh_o3d, self.max_dist)
-
             # print(f"Saving UDF to {udf_path}")
             np.savez(udf_path, surface=surface, points=points, labels=labels, gradients=gradients)
             del surface, points, labels, gradients
