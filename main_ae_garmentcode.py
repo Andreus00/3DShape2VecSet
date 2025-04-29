@@ -33,7 +33,7 @@ def get_args_parser():
     parser.add_argument('--model', default='kl_garments', type=str, metavar='MODEL',
                         help='Name of model to train')
 
-    parser.add_argument('--point_cloud_size', default=8192, type=int,
+    parser.add_argument('--point_cloud_size', default=2048, type=int,
                         help='input size')
 
     # Optimizer parameters
@@ -92,7 +92,7 @@ def get_args_parser():
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--save_every', default=10, type=int, help='Saving iterval')
-    parser.add_argument('--max_dist', default=1.0, type=float, help='Max fistance for the UDF')
+    parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
 
     return parser
 
