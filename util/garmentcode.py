@@ -47,25 +47,53 @@ def process_garment_worker(args, mean_body_mean, force_occupancy, max_dist):
     with open(body_info_path, 'r') as f:
         body_info = yaml.load(f, Loader=yaml.FullLoader)
         body_height = body_info.get('body', {}).get('height', 171.0)
+    
 
     udf_path = os.path.join(subpath, f"{g}_udf.npz")
     if not os.path.exists(udf_path) or force_occupancy:
-
-        if os.path.exists(udf_path):
-            try:
-                with np.load(udf_path) as data:
-                    if "surface" in data and "points" in data and "labels" in data and "gradients" in data:
-                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
-                                'body_height': body_height, 'body_mean': mean_body_mean}
-            except BadZipFile as e:
-                print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
-                os.remove(udf_path)
+        # if os.path.exists(udf_path):
+        #     try:
+        #         with np.load(udf_path) as data:
+        #             if "surface" in data and "points" in data and "labels" in data and "gradients" in data:
+        #                 return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
+        #                         'body_height': body_height, 'body_mean': mean_body_mean}
+        #     except BadZipFile as e:
+        #         print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
+        #         os.remove(udf_path)
 
         mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
         mesh_o3d.translate((-mean_body_mean[0].item(), -mean_body_mean[1].item(), -mean_body_mean[2].item()))
         mesh_o3d.scale(1 / body_height, center=np.zeros((3, 1)))
 
         surface, points, labels, gradients = sample_udf_from_mesh(mesh_o3d, max_dist)
+
+        # import matplotlib.pyplot as plt
+        # # Pick 10,000 random points
+        # num_points_to_plot = min(10000, points.shape[0])
+        # idxs = np.random.choice(points.shape[0], num_points_to_plot, replace=False)
+        # sampled_points = points[idxs]
+        # sampled_labels = labels[idxs]
+        # sampled_labels[sampled_labels > 0.1] = 0.1
+        # sampled_labels = 1 - sampled_labels / 0.1
+
+        # # Plot in 3D using labels as color
+        # fig = plt.figure(figsize=(10, 8))
+        # ax = fig.add_subplot(111, projection='3d')
+        # sc = ax.scatter(
+        #     sampled_points[:, 0],
+        #     sampled_points[:, 1],
+        #     sampled_points[:, 2],
+        #     c=sampled_labels,
+        #     cmap='viridis',
+        #     s=1
+        # )
+        # plt.colorbar(sc, label='Labels')
+        # ax.set_xlabel('X')
+        # ax.set_ylabel('Y')
+        # ax.set_zlabel('Z')
+        # plt.title('3D Point Cloud with Labels as Color')
+        # plt.show()
+
         np.savez(udf_path, surface=surface, points=points, labels=labels, gradients=gradients)
         del surface, points, labels, gradients
 
@@ -80,7 +108,7 @@ def process_garment_worker(args, mean_body_mean, force_occupancy, max_dist):
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=16_384, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=100, max_dist=1.0):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -108,9 +136,9 @@ class GarmentCode(data.Dataset):
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
             split_idx = (len(self.mesh_folders) * 80) // 100
             if self.split == "training":
-                self.mesh_folders = self.mesh_folders[:split_idx]
+                self.mesh_folders = self.mesh_folders[:split_idx][:1]
             elif self.split == "validation":
-                self.mesh_folders = self.mesh_folders[split_idx:]
+                self.mesh_folders = self.mesh_folders[split_idx:][:1]
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
@@ -158,7 +186,6 @@ class GarmentCode(data.Dataset):
 
         udf_path = os.path.join(subpath, f"{g}_udf.npz")
         if not os.path.exists(udf_path) or self.force_occupancy:
-
             if os.path.exists(udf_path):
                 with np.load(udf_path) as data:
                     if "surface" in data and "points" in data and "labels" in data and "gradients" in data:

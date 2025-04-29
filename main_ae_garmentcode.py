@@ -49,7 +49,7 @@ def get_args_parser():
     parser.add_argument('--layer_decay', type=float, default=0.75,
                         help='layer-wise lr decay from ELECTRA/BEiT')
 
-    parser.add_argument('--min_lr', type=float, default=1e-6, metavar='LR',
+    parser.add_argument('--min_lr', type=float, default=1e-8, metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0')
 
     parser.add_argument('--warmup_epochs', type=int, default=40, metavar='N',
@@ -92,7 +92,7 @@ def get_args_parser():
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--save_every', default=10, type=int, help='Saving iterval')
-    parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
+    parser.add_argument('--max_dist', default=1.0, type=float, help='Max fistance for the UDF')
 
     return parser
 

@@ -74,7 +74,7 @@ def compute_udf_from_mesh(
     queries_stds: List[float] = [0.003, 0.01, 0.1],
     num_queries_per_std: List[int] = [5_000, 4_000, 500, 500],
     coords_range: Tuple[float, float] = (-1.0, 1.0),
-    max_dist: float = 0.1,
+    max_dist: float = 1.0,
     convert_to_bce_labels: bool = False,
     use_cuda: bool = True,
     input_queries = None
@@ -127,11 +127,16 @@ def sample_udf_from_mesh(mesh_o3d, max_dist):
     coords, labels, gradients = compute_udf_from_mesh(
         mesh_o3d,
         num_queries_on_surface=250_000,
-        num_queries_per_std=[250_000, 200_000, 25_000, 200_000],
+        # num_queries_per_std=[250_000, 200_000, 25_000, 200_000],
+        # queries_stds = [0.3, 0.2, 0.01, 0.1],
+        # num_queries_per_std=[10_000, 10_000, 10_000, 10_000, 50_000],
+        queries_stds = [0.01],
+        num_queries_per_std=[10_000, 50_000],
+        max_dist=max_dist,
     )
 
-    labels = labels / max_dist
-    labels = 1 - labels
+    # labels = labels / max_dist
+    # labels = 1 - labels
 
 
     return surface.detach().cpu().numpy(), coords.detach().cpu().numpy(), labels.detach().cpu().numpy(), gradients.detach().cpu().numpy()
