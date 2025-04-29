@@ -209,7 +209,7 @@ class GarmentCode(data.Dataset):
     def __getitem__(self, idx):
         idx = idx % len(self.models)
 
-        model_path = self.models[idx]['model']
+        # model_path = self.models[idx]['model']
         point_path = self.models[idx]['point_path']
 
         try:
