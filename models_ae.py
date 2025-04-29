@@ -434,8 +434,8 @@ def create_autoencoder(dim=512, M=512, latent_dim=64, N=2048, determinisitc=Fals
 def ae_garments(N=4096):
     return create_autoencoder(dim=512, M=512, latent_dim=8, N=N, determinisitc=True)
 
-def kl_garments(N=4096):
-    return create_autoencoder(dim=1024, M=1024, latent_dim=16, N=N, determinisitc=False)
+def kl_garments(N=2048):
+    return create_autoencoder(dim=512, M=512, latent_dim=16, N=N, determinisitc=False)
 
 ###############
 
