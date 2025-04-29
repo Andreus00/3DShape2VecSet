@@ -131,7 +131,7 @@ def sample_udf_from_mesh(mesh_o3d, max_dist):
         # queries_stds = [0.3, 0.2, 0.01, 0.1],
         # num_queries_per_std=[10_000, 10_000, 10_000, 10_000, 50_000],
         queries_stds = [0.01],
-        num_queries_per_std=[10_000, 50_000],
+        num_queries_per_std=[5_000, 5_000],
         max_dist=max_dist,
     )
 
