@@ -33,7 +33,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
     optimizer.zero_grad()
 
-    kl_weight = 1e-5
+    kl_weight = 1e-3
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
@@ -47,7 +47,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         points = points.to(device, non_blocking=True)
         udf = udf.to(device, non_blocking=True)
         labels = torch.clip(udf, 0, max_dist)
-        labels = udf / max_dist
+        labels = labels / max_dist
         labels = 1 - labels
         surface = surface.to(device, non_blocking=True)
 
@@ -67,7 +67,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             loss = criterion(outputs, labels)
             # print(f'udf: {udf[0, :10]}, \noutputs: {outputs[0, :10]}, \nlabels: {labels[0, :10]}')
             
-            # if data_iter_step % 150 == 0:
+            # if epoch % 10 == 0 and data_iter_step == 0:
             #     import matplotlib.pyplot as plt
             #     # Pick 10,000 random points
             #     num_points_to_plot = min(10000, points.shape[1])
@@ -86,6 +86,17 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             #         cmap='viridis',
             #         s=1
             #     )
+            #     # Plot surface points in red
+            #     surface_points = surface[0].cpu().detach().numpy()
+            #     print(surface_points.shape)
+            #     ax.scatter(
+            #         surface_points[:, 0],
+            #         surface_points[:, 1],
+            #         surface_points[:, 2],
+            #         c='red',
+            #         label='Surface Points'
+            #     )
+            #     ax.legend()
             #     plt.colorbar(sc, label='Labels')
             #     ax.set_xlabel('X')
             #     ax.set_ylabel('Y')
@@ -185,9 +196,10 @@ def evaluate(data_loader, model, device):
 
             loss = criterion(outputs, labels)
 
-        threshold = 0
+        threshold = 0.5
 
         pred = torch.zeros_like(outputs)
+        outputs = torch.sigmoid(outputs)
         pred[outputs>=threshold] = 1
 
         accuracy = (pred==labels).float().sum(dim=1) / labels.shape[1]
