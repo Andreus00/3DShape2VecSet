@@ -50,53 +50,62 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
     udf_path = os.path.join(subpath, f"{g}_udf.npz")
 
     if not os.path.exists(udf_path) or force_occupancy:
-        # if os.path.exists(udf_path):
-        #     try:
-        #         with np.load(udf_path) as data:
-        #             if "surface" in data and "points" in data and "labels" in data and "gradients" in data:
-        #                 return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
-        #     except BadZipFile as e:
-        #         print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
-        #         os.remove(udf_path)
+        if os.path.exists(udf_path) and not force_occupancy:
+            try:
+                with np.load(udf_path) as data:
+                    if "surface" in data and "points" in data and "udf" in data and "gradients" in data:
+                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
+            except BadZipFile as e:
+                print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
+                os.remove(udf_path)
 
 
         mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
         shifts = (mesh_o3d.get_max_bound() + mesh_o3d.get_min_bound()) / 2
         mesh_o3d.translate((-shifts[0], -shifts[1], -shifts[2]))
-        scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.7
+        scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
         mesh_o3d.scale(scale, center=np.zeros((3, 1)))
 
-        surface, points, labels, gradients = sample_udf_from_mesh(mesh_o3d, max_dist)
+        surface, points, udf, gradients = sample_udf_from_mesh(mesh_o3d, number_of_points=250_000, max_dist=max_dist)
 
         # import matplotlib.pyplot as plt
         # # Pick 10,000 random points
-        # num_points_to_plot = min(10000, points.shape[0])
+        # num_points_to_plot = min(100000, points.shape[0])
         # idxs = np.random.choice(points.shape[0], num_points_to_plot, replace=False)
-        # sampled_points = points[idxs]
-        # sampled_labels = labels[idxs]
-        # sampled_labels[sampled_labels > 0.1] = 0.1
-        # sampled_labels = 1 - sampled_labels / 0.1
+        # sampled_udf = torch.asarray(udf[idxs])
+        # sampled_points = torch.asarray(points[idxs])
 
-        # # Plot in 3D using labels as color
-        # fig = plt.figure(figsize=(10, 8))
-        # ax = fig.add_subplot(111, projection='3d')
-        # sc = ax.scatter(
-        #     sampled_points[:, 0],
-        #     sampled_points[:, 1],
-        #     sampled_points[:, 2],
-        #     c=sampled_labels,
-        #     cmap='viridis',
-        #     s=1
-        # )
-        # plt.colorbar(sc, label='Labels')
-        # ax.set_xlabel('X')
-        # ax.set_ylabel('Y')
-        # ax.set_zlabel('Z')
-        # plt.title('3D Point Cloud with Labels as Color')
-        # plt.show()
+        # from . import misc
 
-        np.savez(udf_path, surface=surface, points=points, labels=labels, gradients=gradients)
-        del surface, points, labels, gradients
+        # sampled_labels = 1 - torch.clip(sampled_udf, 0, max_dist) / max_dist # misc.udf_to_labels(sampled_udf, max_dist)
+
+        # for a, b in [(0.98, 1)]:
+        #     m = torch.bitwise_and(sampled_labels >= a, sampled_labels <= b)
+        #     interval_points = sampled_points[m]
+        #     interval_labels = sampled_labels[m]
+        #     # Plot in 3D using labels as color
+        #     fig = plt.figure(figsize=(10, 8))
+        #     ax = fig.add_subplot(111, projection='3d')
+        #     sc = ax.scatter(
+        #         interval_points[:, 0],
+        #         interval_points[:, 1],
+        #         interval_points[:, 2],
+        #         c=interval_labels,
+        #         cmap='viridis',
+        #         s=1
+        #     )
+        #     plt.colorbar(sc, label='Labels')
+        #     ax.set_xlabel('X')
+        #     ax.set_ylabel('Y')
+        #     ax.set_zlabel('Z')
+        #     ax.set_xlim(-1, 1)
+        #     ax.set_ylim(-1, 1)
+        #     ax.set_zlim(-1, 1)
+        #     plt.title('3D Point Cloud with Labels as Color')
+        #     plt.show()
+
+        np.savez(udf_path, surface=surface, points=points, udf=udf, gradients=gradients)
+        del surface, points, udf, gradients
 
     return {
         'model': model_file,
@@ -130,51 +139,24 @@ def process_garment_worker_body_model_norm(args, mean_body_mean, force_occupancy
     
     udf_path = os.path.join(subpath, f"{g}_udf.npz")
     if not os.path.exists(udf_path) or force_occupancy:
-        # if os.path.exists(udf_path):
-        #     try:
-        #         with np.load(udf_path) as data:
-        #             if "surface" in data and "points" in data and "labels" in data and "gradients" in data:
-        #                 return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
-        #                         'body_height': body_height, 'body_mean': mean_body_mean}
-        #     except BadZipFile as e:
-        #         print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
-        #         os.remove(udf_path)
+        if os.path.exists(udf_path) and not force_occupancy:
+            try:
+                with np.load(udf_path) as data:
+                    if "surface" in data and "points" in data and "udf" in data and "gradients" in data:
+                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
+                                'body_height': body_height, 'body_mean': mean_body_mean}
+            except BadZipFile as e:
+                print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
+                os.remove(udf_path)
 
         mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
         mesh_o3d.translate((-mean_body_mean[0].item(), -mean_body_mean[1].item(), -mean_body_mean[2].item()))
         mesh_o3d.scale(1 / body_height, center=np.zeros((3, 1)))
 
-        surface, points, labels, gradients = sample_udf_from_mesh(mesh_o3d, max_dist)
+        surface, points, udf, gradients = sample_udf_from_mesh(mesh_o3d, number_of_points=100_000)
 
-        # import matplotlib.pyplot as plt
-        # # Pick 10,000 random points
-        # num_points_to_plot = min(10000, points.shape[0])
-        # idxs = np.random.choice(points.shape[0], num_points_to_plot, replace=False)
-        # sampled_points = points[idxs]
-        # sampled_labels = labels[idxs]
-        # sampled_labels[sampled_labels > 0.1] = 0.1
-        # sampled_labels = 1 - sampled_labels / 0.1
-
-        # # Plot in 3D using labels as color
-        # fig = plt.figure(figsize=(10, 8))
-        # ax = fig.add_subplot(111, projection='3d')
-        # sc = ax.scatter(
-        #     sampled_points[:, 0],
-        #     sampled_points[:, 1],
-        #     sampled_points[:, 2],
-        #     c=sampled_labels,
-        #     cmap='viridis',
-        #     s=1
-        # )
-        # plt.colorbar(sc, label='Labels')
-        # ax.set_xlabel('X')
-        # ax.set_ylabel('Y')
-        # ax.set_zlabel('Z')
-        # plt.title('3D Point Cloud with Labels as Color')
-        # plt.show()
-
-        np.savez(udf_path, surface=surface, points=points, labels=labels, gradients=gradients)
-        del surface, points, labels, gradients
+        np.savez(udf_path, surface=surface, points=points, udf=udf, gradients=gradients)
+        del surface, points, udf, gradients
 
     return {
         'model': model_file,
@@ -187,7 +169,7 @@ def process_garment_worker_body_model_norm(args, mean_body_mean, force_occupancy
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=1.0, body_model_normalization=False, body_model_normalization_alpha=0.5):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=16, max_dist=1.0, body_model_normalization=False, body_model_normalization_alpha=0.5):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -259,7 +241,7 @@ class GarmentCode(data.Dataset):
         try:
             with np.load(point_path) as data:
                 points = data["points"]
-                labels = data["labels"]
+                udf = data["udf"]
                 surface = data["surface"]
                 
         except Exception as e:
@@ -277,21 +259,21 @@ class GarmentCode(data.Dataset):
         if self.sampling:
             idxs = np.random.default_rng().choice(points.shape[0], self.num_samples, replace=False)
             points = points[idxs]
-            labels = labels[idxs]
+            udf = udf[idxs]
         
         # Shuffle points and labels
 
         points = torch.from_numpy(points).float()
-        labels = torch.from_numpy(labels).float()
+        udf = torch.from_numpy(udf).float()
         
         perm = torch.randperm(points.shape[0])
         points = points[perm]
-        labels = labels[perm]
+        udf = udf[perm]
 
         if self.return_surface:
-            return points, labels, surface, 0    # category is fixed for now
+            return points, udf, surface, 0    # category is fixed for now
         else:
-            return points, labels, 0 # category is fixed for now
+            return points, udf, 0 # category is fixed for now
 
     def __len__(self):
         if self.split != 'training':

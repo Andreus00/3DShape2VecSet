@@ -74,7 +74,6 @@ def compute_udf_from_mesh(
     queries_stds: List[float] = [0.003, 0.01, 0.1],
     num_queries_per_std: List[int] = [5_000, 4_000, 500, 500],
     coords_range: Tuple[float, float] = (-1.0, 1.0),
-    max_dist: float = 1.0,
     input_queries = None
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     pcd_o3d = mesh_o3d.sample_points_uniformly(number_of_points=num_surface_points)
@@ -94,7 +93,6 @@ def compute_udf_from_mesh(
     queries = queries.cpu()
 
     udf, gradients = compute_udf_and_gradients(mesh_o3d, queries)
-    # values = torch.clip(udf, min=0, max=max_dist)
 
     return queries, udf, gradients
 
@@ -116,48 +114,58 @@ def get_tensor_pcd_from_o3d(
 
     return pcd_torch
 
-def sample_udf_from_mesh(mesh_o3d, max_dist):
+def sample_udf_from_mesh(mesh_o3d, number_of_points, max_dist):
     
-    pcd_o3d = mesh_o3d.sample_points_uniformly(number_of_points=100_000)
+    pcd_o3d = mesh_o3d.sample_points_uniformly(number_of_points=number_of_points)
 
     surface = get_tensor_pcd_from_o3d(pcd_o3d)[:, :3]
 
-    coords, labels, gradients = compute_udf_from_mesh(
+    coords, udf, gradients = compute_udf_from_mesh(
         mesh_o3d,
         num_queries_on_surface=250_000,
         num_surface_points=100_000,
         # queries_stds=[0.003, 0.2, 0.05, 0.1],
         # num_queries_per_std=[25_000, 30_000, 20_000, 25_000, 500_000],
-        queries_stds=[0.1, 
-                      0.07, 
-                      0.05, 
-                      0.03, 
-                      0.01, 
-                      0.007, 
-                      0.005, 
-                      0.003, 
-                      0.001, 
-                      0.0005, 
-                      0.0001, 
-                      0.0],
-        num_queries_per_std=[20_000, 
-                        20_000, 
-                        20_000, 
-                        20_000, 
-                        20_000, 
-                        20_000, 
-                        20_000, 
-                        20_000, 
-                        30_000, 
-                        50_000, 
-                        40_000, 
-                        90_000, 
+        # queries_stds=[0.1, 
+        #               0.07, 
+        #               0.05, 
+        #               0.03, 
+        #               0.01, 
+        #               0.007, 
+        #               0.005, 
+        #               0.003, 
+        #               0.001, 
+        #               0.0005, 
+        #               0.0001],
+        # num_queries_per_std=[20_000, 
+        #                 20_000, 
+        #                 20_000, 
+        #                 20_000, 
+        #                 20_000, 
+        #                 20_000, 
+        #                 20_000, 
+        #                 20_000, 
+        #                 30_000, 
+        #                 50_000, 
+        #                 40_000,
+        #                 250_000],
+        queries_stds=[0.01,
+                        0.005,
+                        0.001,
+                      ],
+        num_queries_per_std=[75_000,
+                             75_000,
+                             75_000,
                         250_000],
-        max_dist=max_dist,
     )
 
-    # labels = labels / max_dist
-    # labels = 1 - labels
+    coords = torch.cat((coords, surface), dim=0)
+    udf = torch.cat((udf, torch.zeros(surface.shape[0], device=udf.device)), dim=0)
+    gradients = torch.cat((gradients, torch.zeros_like(surface)), dim=0)
+    perm_idxs = torch.randperm(coords.shape[0])
+    coords = coords[perm_idxs]
+    udf = udf[perm_idxs]
+    gradients = gradients[perm_idxs]
 
 
-    return surface.detach().cpu().numpy(), coords.detach().cpu().numpy(), labels.detach().cpu().numpy(), gradients.detach().cpu().numpy()
+    return surface.detach().cpu().numpy(), coords.detach().cpu().numpy(), udf.detach().cpu().numpy(), gradients.detach().cpu().numpy()

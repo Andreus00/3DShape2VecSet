@@ -337,3 +337,19 @@ def all_reduce_mean(x):
         return x_reduce.item()
     else:
         return x
+
+
+def udf_to_labels(udf, max_dist):
+    def custom_sigmoid(t, a, b):
+            return 1 / (1 + torch.exp(-t * a + b))
+    udf_clipped = torch.clip(udf, 0, max_dist) / max_dist
+    labels = 1 - custom_sigmoid(udf_clipped, 8, 4)
+    return labels
+    
+
+def labels_to_udf(labels, max_dist):
+    def inverted_custom_sigmoid(y, a, b):
+        return (torch.log(1 / y - 1) - b) / a
+    udf_clipped = inverted_custom_sigmoid(labels, 8, 4)
+    return udf_clipped
+    

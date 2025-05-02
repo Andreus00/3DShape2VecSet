@@ -46,12 +46,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         points = points.to(device, non_blocking=True)
         udf = udf.to(device, non_blocking=True)
-        labels = torch.clip(udf, 0, max_dist)
-        labels = labels / max_dist
-        labels = 1 - labels
+        labels = 1 - torch.clip(udf, 0, max_dist) / max_dist # misc.udf_to_labels(udf=udf, max_dist=max_dist)
         surface = surface.to(device, non_blocking=True)
-
-
 
         with torch.cuda.amp.autocast(enabled=False):
             outputs = model(surface, points)
@@ -167,7 +163,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 
 @torch.no_grad()
-def evaluate(data_loader, model, device):
+def evaluate(data_loader, model, device, max_dist):
     criterion = torch.nn.BCEWithLogitsLoss()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
@@ -176,10 +172,11 @@ def evaluate(data_loader, model, device):
     # switch to evaluation mode
     model.eval()
 
-    for points, labels, surface, _ in metric_logger.log_every(data_loader, 50, header):
+    for points, udf, surface, _ in metric_logger.log_every(data_loader, 50, header):
 
         points = points.to(device, non_blocking=True)
-        labels = labels.to(device, non_blocking=True)
+        udf = udf.to(device, non_blocking=True)
+        labels = 1 - torch.clip(udf, 0, max_dist) / max_dist # misc.udf_to_labels(udf=udf, max_dist=max_dist)
         surface = surface.to(device, non_blocking=True)
 
         # compute output

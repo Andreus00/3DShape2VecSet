@@ -94,7 +94,7 @@ def get_args_parser():
                         help='url used to set up distributed training')
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
-    parser.add_argument('--save_every', default=10, type=int, help='Saving iterval')
+    parser.add_argument('--save_every', default=50, type=int, help='Saving iterval')
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
     parser.add_argument('--body_model_normalization', action='store_true', help='Use body model normalization')
     parser.add_argument('--body_model_normalization_alpha', type=float, default=0.5, help='Body model normalization value used to scale the body model')
@@ -226,7 +226,7 @@ def main(args):
                 loss_scaler=loss_scaler, epoch=epoch)
 
         if epoch % 5 == 0 or epoch + 1 == args.epochs:
-            test_stats = evaluate(data_loader_val, model, device)
+            test_stats = evaluate(data_loader_val, model, device, max_dist=args.max_dist)
             print(f"iou of the network on the {len(dataset_val)} test images: {test_stats['iou']:.3f}")
             max_iou = max(max_iou, test_stats["iou"])
             print(f'Max iou: {max_iou:.2f}%')
