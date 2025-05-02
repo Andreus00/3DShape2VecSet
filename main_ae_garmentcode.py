@@ -33,7 +33,10 @@ def get_args_parser():
     parser.add_argument('--model', default='kl_garments', type=str, metavar='MODEL',
                         help='Name of model to train')
 
-    parser.add_argument('--point_cloud_size', default=2048, type=int,
+    parser.add_argument('--point_cloud_size', default=8192, type=int,
+                        help='input size')
+
+    parser.add_argument('--num_samples', default=16_384, type=int,
                         help='input size')
 
     # Optimizer parameters
@@ -93,6 +96,8 @@ def get_args_parser():
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--save_every', default=10, type=int, help='Saving iterval')
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
+    parser.add_argument('--body_model_normalization', action='store_true', help='Use body model normalization')
+    parser.add_argument('--body_model_normalization_alpha', type=float, default=0.5, help='Body model normalization value used to scale the body model')
 
     return parser
 
@@ -175,6 +180,8 @@ def main(args):
     
     if args.lr is None:  # only base_lr is specified
         args.lr = args.blr * eff_batch_size / 256
+    # if args.lr is None:  # only base_lr is specified
+    #     args.lr = args.blr# * eff_batch_size 
 
     print("base lr: %.2e" % (args.lr * 256 / eff_batch_size))
     print("actual lr: %.2e" % args.lr)

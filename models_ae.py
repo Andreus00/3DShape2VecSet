@@ -394,14 +394,10 @@ class KLAutoEncoder(nn.Module):
         return self.to_outputs(latents)
 
     def forward(self, pc, queries):
-        # print(f"INPUTS: Garment to Encode {pc.shape}  -  queries for reconstruction {queries.shape} ")
+
         kl, x = self.encode(pc)
-
-        # print("ENCODING DIMENSION: ", x.shape)
-
         o = self.decode(x, queries).squeeze(-1)
 
-        # return o.squeeze(-1), kl
         return {'logits': o, 'kl': kl}
 
 def create_autoencoder(dim=512, M=512, latent_dim=64, N=2048, determinisitc=False):
@@ -435,7 +431,7 @@ def ae_garments(N=4096):
     return create_autoencoder(dim=512, M=512, latent_dim=8, N=N, determinisitc=True)
 
 def kl_garments(N=2048):
-    return create_autoencoder(dim=512, M=512, latent_dim=16, N=N, determinisitc=False)
+    return create_autoencoder(dim=512, M=512, latent_dim=32, N=N, determinisitc=False)
 
 ###############
 
