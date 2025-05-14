@@ -27,8 +27,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
-    max_dist = args.max_dist
-
     accum_iter = args.accum_iter
 
     optimizer.zero_grad()
@@ -46,7 +44,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         points = points.to(device, non_blocking=True)
         udf = udf.to(device, non_blocking=True)
-        labels = 1 - torch.clip(udf, 0, max_dist) / max_dist # misc.udf_to_labels(udf=udf, max_dist=max_dist)
+        labels = torch.clip(udf, 0, args.max_dist)
         surface = surface.to(device, non_blocking=True)
 
         with torch.cuda.amp.autocast(enabled=False):
@@ -176,7 +174,7 @@ def evaluate(data_loader, model, device, max_dist):
 
         points = points.to(device, non_blocking=True)
         udf = udf.to(device, non_blocking=True)
-        labels = 1 - torch.clip(udf, 0, max_dist) / max_dist # misc.udf_to_labels(udf=udf, max_dist=max_dist)
+        labels = torch.clip(udf, 0, max_dist)
         surface = surface.to(device, non_blocking=True)
 
         # compute output

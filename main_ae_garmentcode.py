@@ -196,7 +196,7 @@ def main(args):
     optimizer = torch.optim.AdamW(model_without_ddp.parameters(), lr=args.lr)
     loss_scaler = NativeScaler()
 
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.MSELoss()
 
     print("criterion = %s" % str(criterion))
 
