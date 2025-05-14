@@ -169,7 +169,7 @@ def process_garment_worker_body_model_norm(args, mean_body_mean, force_occupancy
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=16, max_dist=1.0, body_model_normalization=False, body_model_normalization_alpha=0.5):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=1.0, body_model_normalization=False, body_model_normalization_alpha=0.5):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
