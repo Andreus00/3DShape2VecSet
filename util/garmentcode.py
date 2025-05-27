@@ -20,15 +20,77 @@ import open3d as o3d
 from zipfile import BadZipFile
 import multiprocessing as mp
 
-from .process_udf import sample_udf_from_mesh, get_tensor_pcd_from_o3d
+from .process_udf import sample_udf_from_mesh
+
+import torch.multiprocessing as mp
+from functools import partial
+import time
+import matplotlib.pyplot as plt
+import scipy.sparse
 
 category_ids = {
     # todo: add category ids if necessary
 }
-import torch.multiprocessing as mp
-from functools import partial
+
+def build_pdf(A, normals, adj):
+    n_faces = len(normals)
+
+    # Step 1: Build sparse adjacency matrix (symmetric)
+    rows = np.concatenate([adj[:, 0], adj[:, 1]])
+    cols = np.concatenate([adj[:, 1], adj[:, 0]])
+    data = np.ones(len(rows))
+    adj_matrix = scipy.sparse.coo_matrix((data, (rows, cols)), shape=(n_faces, n_faces))
+
+    # Step 2: Compute dot product between each face and its neighbors
+    dot_products = adj_matrix.dot(normals)  # shape (n_faces, 3)
+    normal_mags = np.linalg.norm(dot_products, axis=1)
+    norm_normals = np.linalg.norm(normals, axis=1)
+    denom = norm_normals * normal_mags + 1e-8
+    cos_angles = np.einsum('ij,ij->i', normals, dot_products) / denom
+    cos_angles = np.clip(cos_angles, -1.0, 1.0)
+    angles = np.arccos(cos_angles)
+
+    # Step 3: Count neighbors per face
+    degree = np.asarray(adj_matrix.sum(axis=1)).flatten()
+    degree = np.maximum(degree, 1)
+
+    # Step 4: Average angle per face
+    mean_angle = angles / degree
+
+    # Step 5: Importance sampling weights
+    detail = np.maximum(mean_angle, 1e-6)
+    weights = A * detail
+    pdf = weights / weights.sum()
+
+    return pdf
 
 
+def importance_sampling(mesh, n_points=10_000):
+    A = mesh.area_faces
+    normals = mesh.face_normals
+    adj = mesh.face_adjacency
+
+    # Sampling function
+    def sample_points(pdf, n=1):
+        f_idx = np.random.choice(len(mesh.faces), size=n, p=pdf)
+        v = mesh.vertices[mesh.faces[f_idx]]
+        r = np.random.rand(n, 2)
+        sqrt_r1 = np.sqrt(r[:, 0])[:, None]
+        u = 1 - sqrt_r1
+        w = r[:, 1:2] * sqrt_r1
+        pts = u * v[:, 0] + w * v[:, 1] + (1 - u - w) * v[:, 2]
+
+        # Calculate triangle normal and use it as a gradient for the sampled points
+        grads = np.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
+        grads = grads / (np.linalg.norm(grads, axis=1, keepdims=True) + 1e-8)
+        return pts, grads
+
+    pdf = build_pdf(A, normals, adj)
+
+    # Sample
+    points, grads = sample_points(pdf=pdf, n=n_points)
+    
+    return points, grads
 
 def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha):
     """Processes a single garment on a specific GPU."""
@@ -53,59 +115,74 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         if os.path.exists(udf_path) and not force_occupancy:
             try:
                 with np.load(udf_path) as data:
-                    if "surface" in data and "points" in data and "udf" in data and "gradients" in data:
+                    if "surface" in data and "points_near" in data and "points_rand" in data and "udf" in data and "gradients" in data and "importance_points" in data:
                         return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
             except BadZipFile as e:
                 print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
                 os.remove(udf_path)
 
 
-        mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
-        shifts = (mesh_o3d.get_max_bound() + mesh_o3d.get_min_bound()) / 2
-        mesh_o3d.translate((-shifts[0], -shifts[1], -shifts[2]))
-        scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
-        mesh_o3d.scale(scale, center=np.zeros((3, 1)))
+        # mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
+        # shifts = (mesh_o3d.get_max_bound() + mesh_o3d.get_min_bound()) / 2
+        # mesh_o3d.translate((-shifts[0], -shifts[1], -shifts[2]))
+        # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
+        # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
+        mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
+        b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
+        shifts = (b_max + b_min) / 2
+        mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
+        scale = (1 / np.abs(b_max - b_min).max()) * 1.9
+        mesh_trimesh = mesh_trimesh.apply_scale(scale)
 
-        surface, points, udf, gradients = sample_udf_from_mesh(mesh_o3d, number_of_points=250_000, max_dist=max_dist)
+        # Check that scale is close to 1 and shifts are close to the origin
+        b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
+        shifts = (b_max + b_min) / 2
+        scale = (1 / np.abs(b_max - b_min).max()) * 1.9
+        if not (0.99 <= scale <= 1.01):
+            print(f"Warning: Normalization Failed. Scale is not close to 1 (scale={scale}) for {model_file}")
+        if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
+            print(f"Warning: Normalization Failed. shifts are not close to origin (shifts={shifts}) for {model_file}")
 
-        # import matplotlib.pyplot as plt
-        # # Pick 10,000 random points
-        # num_points_to_plot = min(100000, points.shape[0])
-        # idxs = np.random.choice(points.shape[0], num_points_to_plot, replace=False)
-        # sampled_udf = torch.asarray(udf[idxs])
-        # sampled_points = torch.asarray(points[idxs])
+        surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000)
 
-        # from . import misc
+        # # Visualization: plot 10,000 points from each set (points_near, points_rand, surface)
+        # fig = plt.figure(figsize=(18, 5))
 
-        # sampled_labels = 1 - torch.clip(sampled_udf, 0, max_dist) / max_dist # misc.udf_to_labels(sampled_udf, max_dist)
+        # # Plot points_near
+        # ax1 = fig.add_subplot(131, projection='3d')
+        # idxs_ = np.random.choice(points_near.shape[0], min(10_000, points_near.shape[0]), replace=False)
+        # p_near = points_near[idxs_]
+        # ax1.scatter(p_near[:, 0], p_near[:, 1], p_near[:, 2], s=1, c=udf_near[idxs_])
+        # ax1.set_title('points_near')
 
-        # for a, b in [(0.98, 1)]:
-        #     m = torch.bitwise_and(sampled_labels >= a, sampled_labels <= b)
-        #     interval_points = sampled_points[m]
-        #     interval_labels = sampled_labels[m]
-        #     # Plot in 3D using labels as color
-        #     fig = plt.figure(figsize=(10, 8))
-        #     ax = fig.add_subplot(111, projection='3d')
-        #     sc = ax.scatter(
-        #         interval_points[:, 0],
-        #         interval_points[:, 1],
-        #         interval_points[:, 2],
-        #         c=interval_labels,
-        #         cmap='viridis',
-        #         s=1
-        #     )
-        #     plt.colorbar(sc, label='Labels')
-        #     ax.set_xlabel('X')
-        #     ax.set_ylabel('Y')
-        #     ax.set_zlabel('Z')
-        #     ax.set_xlim(-1, 1)
-        #     ax.set_ylim(-1, 1)
-        #     ax.set_zlim(-1, 1)
-        #     plt.title('3D Point Cloud with Labels as Color')
-        #     plt.show()
+        # # Plot points_rand
+        # ax2 = fig.add_subplot(132, projection='3d')
+        # idxs_ = np.random.choice(points_rand.shape[0], min(10_000, points_near.shape[0]), replace=False)
+        # p_rand= points_rand[idxs_]
+        # ax2.scatter(p_rand[:, 0], p_rand[:, 1], p_rand[:, 2], s=1, c=udf_rand[idxs_])
+        # ax2.set_title('points_rand')
 
-        np.savez(udf_path, surface=surface, points=points, udf=udf, gradients=gradients)
-        del surface, points, udf, gradients
+        # # Plot surface
+        # ax3 = fig.add_subplot(133, projection='3d')
+        # idxs_ = np.random.choice(surface.shape[0], min(10_000, points_near.shape[0]), replace=False)
+        # p_sfc= surface[idxs_]
+        # ax3.scatter(p_sfc[:, 0], p_sfc[:, 1], p_sfc[:, 2], s=1, c='red')
+        # ax3.set_title('surface')
+
+        # plt.tight_layout()
+        # plt.show()
+        # plt.pause(10)
+
+        mesh_trimesh = tri.load(str(model_file))
+        mesh_trimesh.vertices -= shifts
+        mesh_trimesh.vertices *= scale
+
+        importance_points, importance_grad = importance_sampling(mesh_trimesh)
+
+        np.savez(udf_path, surface=surface, surface_grads=surface_grads, importance_points=importance_points, importance_grad=importance_grad, points_near=points_near, \
+                 points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \
+                    gradients_rand=gradients_rand)
+        del surface, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand
 
     return {
         'model': model_file,
@@ -113,63 +190,9 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         'body_info_path': body_info_path
     }
 
-
-
-def process_garment_worker_body_model_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha):
-    """Processes a single garment on a specific GPU."""
-    subpath, gpu_id = args
-    torch.cuda.set_device(gpu_id)
-
-    g = subpath.split('/')[-1]
-    if not os.path.isdir(subpath):
-        return None
-
-    model_file = os.path.join(subpath, f"{g}_sim.ply")
-    if not os.path.exists(model_file):
-        print(f"Model {model_file} does not exist")
-        return None
-
-    body_info_path = os.path.join(subpath, f"{g}_body_measurements.yaml")
-    body_height = 171.99 # Default height
-    with open(body_info_path, 'r') as f:
-        body_info = yaml.load(f, Loader=yaml.FullLoader)
-        body_height = body_info.get('body', {}).get('height', body_height)
-    
-    body_height = body_height * body_model_normalization_alpha
-    
-    udf_path = os.path.join(subpath, f"{g}_udf.npz")
-    if not os.path.exists(udf_path) or force_occupancy:
-        if os.path.exists(udf_path) and not force_occupancy:
-            try:
-                with np.load(udf_path) as data:
-                    if "surface" in data and "points" in data and "udf" in data and "gradients" in data:
-                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path,
-                                'body_height': body_height, 'body_mean': mean_body_mean}
-            except BadZipFile as e:
-                print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
-                os.remove(udf_path)
-
-        mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
-        mesh_o3d.translate((-mean_body_mean[0].item(), -mean_body_mean[1].item(), -mean_body_mean[2].item()))
-        mesh_o3d.scale(1 / body_height, center=np.zeros((3, 1)))
-
-        surface, points, udf, gradients = sample_udf_from_mesh(mesh_o3d, number_of_points=100_000)
-
-        np.savez(udf_path, surface=surface, points=points, udf=udf, gradients=gradients)
-        del surface, points, udf, gradients
-
-    return {
-        'model': model_file,
-        'point_path': udf_path,
-        'body_info_path': body_info_path,
-        'body_height': body_height,
-        'body_mean': mean_body_mean
-    }
-
-
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1024, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -183,6 +206,9 @@ class GarmentCode(data.Dataset):
         self.max_dist = max_dist
         self.body_model_normalization = body_model_normalization
         self.body_model_normalization_alpha = body_model_normalization_alpha
+        self.n_rnd_pts = int(random_samples_ratio * num_samples)
+        self.n_sfc_pts = int(surface_samples_ratio * num_samples)
+        self.n_near_pts = num_samples - (self.n_rnd_pts + self.n_sfc_pts)
 
         # Load split file
         train_val_test_path = os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json')
@@ -199,9 +225,10 @@ class GarmentCode(data.Dataset):
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
             split_idx = (len(self.mesh_folders) * 80) // 100
             if self.split == "training":
-                self.mesh_folders = self.mesh_folders[:split_idx]
+                self.mesh_folders = self.mesh_folders[:split_idx][:1]
             elif self.split == "validation":
-                self.mesh_folders = self.mesh_folders[split_idx:]
+                # self.mesh_folders = self.mesh_folders[split_idx:][:1]
+                self.mesh_folders = self.mesh_folders[:split_idx][:1]
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
@@ -212,7 +239,7 @@ class GarmentCode(data.Dataset):
         world_size = torch.cuda.device_count()
         print(f"Using {world_size} GPUs")
 
-        processing_func = process_garment_worker_body_model_norm if self.body_model_normalization else process_garment_worker_meshbox_norm
+        processing_func = process_garment_worker_meshbox_norm
         
         with mp.get_context("spawn").Pool(processes=world_size) as pool:
             results = list(tqdm.tqdm(
@@ -240,40 +267,67 @@ class GarmentCode(data.Dataset):
 
         try:
             with np.load(point_path) as data:
-                points = data["points"]
-                udf = data["udf"]
-                surface = data["surface"]
+                sfc = data["surface"]
+                sfc_grads = data["surface_grads"]
+                importance_points = data["importance_points"]
+                points_near = data["points_near"]
+                points_rand = data["points_rand"]
+                udf_near = data["udf_near"]
+                udf_rand = data["udf_rand"]
+                importance_grad = data["importance_grad"]
+                gradients_near = data["gradients_near"]
+                gradients_rand = data["gradients_rand"]
                 
         except Exception as e:
             print(e)
             print(point_path)
 
         if self.return_surface:
-            # surface = (surface - self.mean_body_mean) / self.models[idx]['body_height']
             if self.surface_sampling:
-                idxs = np.random.default_rng().choice(surface.shape[0], self.pc_size, replace=False)
-                surface = torch.from_numpy(surface[idxs]).float()
+                idxs = np.random.default_rng().choice(sfc.shape[0], self.pc_size // 2, replace=False)
+                idxs_importance = np.random.default_rng().choice(importance_points.shape[0], self.pc_size // 2, replace=False)
+                
+                surface = torch.cat([torch.from_numpy(sfc[idxs]), torch.from_numpy(importance_points[idxs_importance])]).float()
+                grads = torch.cat([torch.from_numpy(sfc_grads[idxs]), torch.from_numpy(importance_grad[idxs_importance])]).float()
             else:
-                surface = torch.from_numpy(surface.vertices).float()
+                surface = torch.cat([torch.from_numpy(sfc), torch.from_numpy(importance_points)]).float()
+                grads = torch.cat([torch.from_numpy(sfc_grads), torch.from_numpy(importance_grad)]).float()
 
         if self.sampling:
-            idxs = np.random.default_rng().choice(points.shape[0], self.num_samples, replace=False)
-            points = points[idxs]
-            udf = udf[idxs]
+            idxs_near = np.random.default_rng().choice(points_near.shape[0], self.n_near_pts, replace=False)
+            idxs_rand = np.random.default_rng().choice(points_rand.shape[0], self.n_rnd_pts, replace=False)
+            idxs_sfc = np.random.default_rng().choice(sfc.shape[0], self.n_sfc_pts, replace=False)
+            points_near = points_near[idxs_near]
+            udf_near = udf_near[idxs_near]
+            points_rand = points_rand[idxs_rand]
+            udf_rand = udf_rand[idxs_rand]
+            points_sfc = sfc[idxs_sfc]
+            udf_sfc = np.zeros((points_sfc.shape[0],))
+            grads_near = gradients_near[idxs_near]
+            grads_rand = gradients_rand[idxs_rand]
+            grads_sfc = sfc_grads[idxs_sfc]
+            points = np.concatenate([points_near, points_rand, points_sfc])
+            udf = np.concatenate([udf_near, udf_rand, udf_sfc])
+            grads = np.concatenate([grads_near, grads_rand, grads_sfc])
+        else:
+            points = np.concatenate([points_near, points_rand, sfc])
+            udf = np.concatenate([udf_near, udf_rand, np.zeros((sfc.shape[0],))])
+            grads = np.concatenate([gradients_near, gradients_rand, sfc_grads])
         
         # Shuffle points and labels
 
         points = torch.from_numpy(points).float()
         udf = torch.from_numpy(udf).float()
+        grads = torch.from_numpy(grads).float()
         
-        perm = torch.randperm(points.shape[0])
-        points = points[perm]
-        udf = udf[perm]
+        # perm = torch.randperm(points.shape[0])
+        # points = points[perm]
+        # udf = udf[perm]
 
         if self.return_surface:
-            return points, udf, surface, 0    # category is fixed for now
+            return points, udf, surface, grads, 0    # category is fixed for now
         else:
-            return points, udf, 0 # category is fixed for now
+            return points, udf, grads, 0 # category is fixed for now
 
     def __len__(self):
         if self.split != 'training':
