@@ -33,11 +33,16 @@ def get_args_parser():
     parser.add_argument('--model', default='kl_garments', type=str, metavar='MODEL',
                         help='Name of model to train')
 
-    parser.add_argument('--point_cloud_size', default=8192, type=int,
+    parser.add_argument('--point_cloud_size', default=8192*2, type=int,
                         help='input size')
 
-    parser.add_argument('--num_samples', default=16_384, type=int,
+    parser.add_argument('--num_samples', default=16_384*2, type=int,
                         help='input size')
+    
+    parser.add_argument('--random_samples_ratio', default=0.1, type=int,
+                        help='ratio of random points in a batch.')
+    parser.add_argument('--surface_samples_ratio', default=0.4, type=int,
+                        help='ratio of random points in a batch.')
 
     # Optimizer parameters
     parser.add_argument('--clip_grad', type=float, default=None, metavar='NORM',
@@ -96,6 +101,8 @@ def get_args_parser():
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--save_every', default=50, type=int, help='Saving iterval')
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
+
+
     parser.add_argument('--body_model_normalization', action='store_true', help='Use body model normalization')
     parser.add_argument('--body_model_normalization_alpha', type=float, default=0.5, help='Body model normalization value used to scale the body model')
 
