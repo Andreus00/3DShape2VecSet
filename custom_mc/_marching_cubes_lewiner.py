@@ -1,6 +1,6 @@
 import base64
 import numpy as np
-import _marching_cubes_lewiner_luts as mcluts
+import custom_mc._marching_cubes_lewiner_luts as mcluts
 import _marching_cubes_lewiner_cy
 
 
