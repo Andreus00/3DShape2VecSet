@@ -256,7 +256,7 @@ class AutoEncoder(nn.Module):
         x = cross_attn(sampled_pc_embeddings, context = pc_embeddings, mask = None) + sampled_pc_embeddings
         x = cross_ff(x) + x
 
-        return x
+        return None, x
 
 
     def decode(self, x, queries):
@@ -276,11 +276,122 @@ class AutoEncoder(nn.Module):
         return self.to_outputs(latents)
 
     def forward(self, pc, queries):
-        x = self.encode(pc)
+        _, x = self.encode(pc)
 
         o = self.decode(x, queries).squeeze(-1)
 
-        return {'logits': o}
+        return {'logits': o, 'kl': None}
+    
+
+class AutoEncoderV2(nn.Module):
+    def __init__(
+        self,
+        *,
+        depth=24,
+        dim=512,
+        queries_dim=512,
+        output_dim = 1,
+        num_inputs = 2048,
+        num_latents = 512,
+        heads = 8,
+        dim_head = 64,
+        weight_tie_layers = False,
+        decoder_ff = False
+    ):
+        super().__init__()
+
+        self.depth = depth
+
+        self.num_inputs = num_inputs
+        self.num_latents = num_latents
+
+        self.cross_attend_blocks = nn.ModuleList([
+            PreNorm(dim, Attention(dim, dim, heads = 1, dim_head = dim), context_dim = dim),
+            PreNorm(dim, FeedForward(dim))
+        ])
+
+        self.point_embed = PointEmbed(dim=dim)
+
+        get_latent_attn = lambda: PreNorm(dim, Attention(dim, heads = heads, dim_head = dim_head, drop_path_rate=0.1))
+        get_latent_ff = lambda: PreNorm(dim, FeedForward(dim, drop_path_rate=0.1))
+        get_latent_attn, get_latent_ff = map(cache_fn, (get_latent_attn, get_latent_ff))
+
+        self.layers = nn.ModuleList([])
+        cache_args = {'_cache': weight_tie_layers}
+
+        for i in range(depth):
+            self.layers.append(nn.ModuleList([
+                get_latent_attn(**cache_args),
+                get_latent_ff(**cache_args)
+            ]))
+
+        self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, dim, heads = 1, dim_head = dim), context_dim = dim)
+        self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
+
+        self.to_outputs = nn.Linear(queries_dim, output_dim) if exists(output_dim) else nn.Identity()
+
+    def encode(self, pc):
+        # pc: B x N x 3
+        B, N, D = pc.shape
+        assert N == self.num_inputs
+        
+        ###### fps
+        flattened_rnd = pc[:, :N//2, :]
+        flattened_imp = pc[:, N//2:, :]
+        flattened_rnd = flattened_rnd.reshape(B*(N//2), D)
+        flattened_imp = flattened_imp.reshape(B*(N//2), D)
+
+        batch = torch.arange(B).to(pc.device)
+        batch_rnd = torch.repeat_interleave(batch, (N//2))
+        batch_imp = torch.repeat_interleave(batch, (N//2))
+
+        pos_rnd = flattened_rnd
+        pos_imp = flattened_imp
+
+        ratio = 1.0 * self.num_latents / self.num_inputs
+        idx_rnd = fps(pos_rnd, batch_rnd, ratio=ratio)
+        idx_imp = fps(pos_imp, batch_imp, ratio=ratio)
+
+        sampled_pc_rnd = pos_rnd[idx_rnd]
+        sampled_pc_imp = pos_imp[idx_imp]
+        
+        sampled_pc = torch.cat([sampled_pc_rnd, sampled_pc_imp], dim=1).view(B, -1, 3)
+        ######
+
+        sampled_pc_embeddings = self.point_embed(sampled_pc)
+
+        pc_embeddings = self.point_embed(pc)
+
+        cross_attn, cross_ff = self.cross_attend_blocks
+
+        x = cross_attn(sampled_pc_embeddings, context = pc_embeddings, mask = None) + sampled_pc_embeddings
+        x = cross_ff(x) + x
+
+        return None, x
+
+
+    def decode(self, x, queries):
+
+        for self_attn, self_ff in self.layers:
+            x = self_attn(x) + x
+            x = self_ff(x) + x
+
+        # cross attend from decoder queries to latents
+        queries_embeddings = self.point_embed(queries)
+        latents = self.decoder_cross_attn(queries_embeddings, context = x)
+
+        # optional decoder feedforward
+        if exists(self.decoder_ff):
+            latents = latents + self.decoder_ff(latents)
+        
+        return self.to_outputs(latents)
+
+    def forward(self, pc, queries):
+        _, x = self.encode(pc)
+
+        o = self.decode(x, queries).squeeze(-1)
+
+        return {'logits': o, 'kl': None}
 
 class KLAutoEncoder(nn.Module):
     def __init__(
@@ -334,6 +445,7 @@ class KLAutoEncoder(nn.Module):
 
         self.mean_fc = nn.Linear(dim, latent_dim)
         self.logvar_fc = nn.Linear(dim, latent_dim)
+
 
     def encode(self, pc):
         # pc: B x N x 3
@@ -399,41 +511,220 @@ class KLAutoEncoder(nn.Module):
         o = self.decode(x, queries).squeeze(-1)
 
         return {'logits': o, 'kl': kl}
+    
 
-def create_autoencoder(dim=512, M=512, latent_dim=64, N=2048, determinisitc=False):
+class KLAutoEncoderV2(nn.Module):
+    def __init__(
+        self,
+        *,
+        depth=24,
+        dim=512,
+        queries_dim=512,
+        output_dim = 1,
+        num_inputs = 2048,
+        num_latents = 512,
+        latent_dim = 64,
+        heads = 8,
+        dim_head = 64,
+        weight_tie_layers = False,
+        decoder_ff = False,
+        compute_grad=True
+    ):
+        super().__init__()
+
+        self.compute_grad = compute_grad
+
+        self.depth = depth
+
+        self.num_inputs = num_inputs
+        self.num_latents = num_latents
+
+        self.cross_attend_blocks = nn.ModuleList([
+            PreNorm(dim, Attention(dim, dim, heads = 1, dim_head = dim), context_dim = dim),
+            PreNorm(dim, FeedForward(dim))
+        ])
+
+        self.point_embed = PointEmbed(dim=dim)
+
+        get_latent_attn = lambda: PreNorm(dim, Attention(dim, heads = heads, dim_head = dim_head, drop_path_rate=0.1))
+        get_latent_ff = lambda: PreNorm(dim, FeedForward(dim, drop_path_rate=0.1))
+        get_latent_attn, get_latent_ff = map(cache_fn, (get_latent_attn, get_latent_ff))
+
+        self.layers = nn.ModuleList([])
+        cache_args = {'_cache': weight_tie_layers}
+
+        for i in range(depth):
+            self.layers.append(nn.ModuleList([
+                get_latent_attn(**cache_args),
+                get_latent_ff(**cache_args)
+            ]))
+
+        self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, dim, heads = 1, dim_head = dim), context_dim = dim)
+        self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
+
+        self.to_outputs = nn.Linear(queries_dim, output_dim) if exists(output_dim) else nn.Identity()
+
+        self.proj = nn.Linear(latent_dim, dim)
+
+        self.mean_fc = nn.Linear(dim, latent_dim)
+        self.logvar_fc = nn.Linear(dim, latent_dim)
+
+
+    def encode(self, pc):
+        # pc: B x N x 3
+        B, N, D = pc.shape
+        assert N == self.num_inputs
+        
+        ###### separate fps for random and importance points
+        flattened_rnd = pc[:, :N//2, :]
+        flattened_imp = pc[:, N//2:, :]
+        flattened_rnd = flattened_rnd.reshape(B*(N//2), D)
+        flattened_imp = flattened_imp.reshape(B*(N//2), D)
+
+        batch = torch.arange(B).to(pc.device)
+        batch_rnd = torch.repeat_interleave(batch, N//2)
+        batch_imp = torch.repeat_interleave(batch, N//2)
+
+        pos_rnd = flattened_rnd
+        pos_imp = flattened_imp
+
+        ratio = 1.0 * self.num_latents / self.num_inputs
+
+        idx_rnd = fps(pos_rnd, batch_rnd, ratio=ratio)
+        idx_imp = fps(pos_imp, batch_imp, ratio=ratio)
+
+        sampled_pc_rnd = pos_rnd[idx_rnd]
+        sampled_pc_imp = pos_imp[idx_imp]
+        
+        sampled_pc = torch.cat([sampled_pc_rnd, sampled_pc_imp], dim=1).view(B, -1, 3)
+        ######
+
+        sampled_pc_embeddings = self.point_embed(sampled_pc)
+
+        pc_embeddings = self.point_embed(pc)
+
+        cross_attn, cross_ff = self.cross_attend_blocks
+
+        x = cross_attn(sampled_pc_embeddings, context = pc_embeddings, mask = None) + sampled_pc_embeddings
+        x = cross_ff(x) + x
+
+        mean = self.mean_fc(x)
+        logvar = self.logvar_fc(x)
+
+        posterior = DiagonalGaussianDistribution(mean, logvar)
+        x = posterior.sample()
+        kl = posterior.kl()
+
+        return kl, x
+
+
+    def decode(self, x, queries):
+
+        x = self.proj(x)
+
+        for self_attn, self_ff in self.layers:
+            x = self_attn(x) + x
+            x = self_ff(x) + x
+
+        # cross attend from decoder queries to latents
+        queries_embeddings = self.point_embed(queries)
+        latents = self.decoder_cross_attn(queries_embeddings, context = x)
+
+        # optional decoder feedforward
+        if exists(self.decoder_ff):
+            latents = latents + self.decoder_ff(latents)
+        
+        return self.to_outputs(latents)
+    
+    def decode_with_grad(self, x, queries):
+        # First pass to compute the UDF
+        udf = self.decode(x, queries)
+
+        # Second pass to compute the gradients
+        queries_grad = queries.clone().detach().requires_grad_(True)
+        udf_grad = self.decode(x, queries_grad).flatten()
+        grad_outputs = torch.ones_like(udf_grad)
+        grads = torch.autograd.grad(
+            outputs=udf_grad,
+            inputs=queries_grad,
+            grad_outputs=grad_outputs,
+            create_graph=False,
+            retain_graph=False,
+            only_inputs=True,
+            allow_unused=True
+        )[0]
+        return udf, grads
+
+    def forward(self, pc, queries):
+
+        kl, x = self.encode(pc)
+        o, g = self.decode_with_grad(x, queries)
+        o = o.squeeze(-1)
+        g = g.squeeze(-1)
+
+        return {'logits': o, 'kl': kl, 'grads': g}
+
+def create_autoencoder(dim=512, M=512, latent_dim=64, N=2048, determinisitc=False, v2=False):
     if determinisitc:
-        model = AutoEncoder(
-            depth=24,
-            dim=dim,
-            queries_dim=dim,
-            output_dim = 1,
-            num_inputs = N,
-            num_latents = M,
-            heads = 8,
-            dim_head = 64,
-        )
+        if v2:
+            model = AutoEncoderV2(
+                depth=24,
+                dim=dim,
+                queries_dim=dim,
+                output_dim = 1,
+                num_inputs = N,
+                num_latents = M,
+                heads = 8,
+                dim_head = 64,
+            )
+        else:
+            model = AutoEncoder(
+                depth=24,
+                dim=dim,
+                queries_dim=dim,
+                output_dim = 1,
+                num_inputs = N,
+                num_latents = M,
+                heads = 8,
+                dim_head = 64,
+            )
     else:
-        model = KLAutoEncoder(
-            depth=24,
-            dim=dim,
-            queries_dim=dim,
-            output_dim = 1,
-            num_inputs = N,
-            num_latents = M,
-            latent_dim = latent_dim,
-            heads = 8,
-            dim_head = 64,
-        )
+        if v2:
+            model = KLAutoEncoderV2(
+                depth=24,
+                dim=dim,
+                queries_dim=dim,
+                output_dim = 1,
+                num_inputs = N,
+                num_latents = M,
+                latent_dim = latent_dim,
+                heads = 8,
+                dim_head = 64,
+            )
+        else:
+            model = KLAutoEncoder(
+                depth=24,
+                dim=dim,
+                queries_dim=dim,
+                output_dim = 1,
+                num_inputs = N,
+                num_latents = M,
+                latent_dim = latent_dim,
+                heads = 8,
+                dim_head = 64,
+            )
     return model
 
 
 def ae_garments(N=8192):
-    return create_autoencoder(dim=512, M=512, latent_dim=8, N=N, determinisitc=True)
+    return create_autoencoder(dim=512, M=1024, latent_dim=8, N=N, determinisitc=True, v2=True)
 
 # def kl_garments(N=8192):
 #     return create_autoencoder(dim=512, M=512, latent_dim=32, N=N, determinisitc=False)
+# def kl_garments(N=8192):
+#     return create_autoencoder(dim=512, M=512, latent_dim=32, N=N, determinisitc=False)
 def kl_garments(N=8192):
-    return create_autoencoder(dim=512*4, M=512*4, latent_dim=32, N=N, determinisitc=False)
+    return create_autoencoder(dim=512, M=1024, latent_dim=8, N=N, determinisitc=False, v2=True)
 
 ###############
 
