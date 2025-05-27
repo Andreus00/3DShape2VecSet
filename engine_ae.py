@@ -309,7 +309,7 @@ def evaluate(data_loader, model, device, max_dist):
         # compute output
         with torch.cuda.amp.autocast(enabled=False):
 
-            outputs = model(surface, points)
+            outputs = model(surface, points, with_grads=False)
             if 'kl' in outputs and outputs['kl'] is not None:
                 loss_kl = outputs['kl']
                 loss_kl = torch.sum(loss_kl) / loss_kl.shape[0]
