@@ -177,7 +177,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         mesh_trimesh.vertices -= shifts
         mesh_trimesh.vertices *= scale
 
-        importance_points, importance_grad = importance_sampling(mesh_trimesh)
+        importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000)
 
         np.savez(udf_path, surface=surface, surface_grads=surface_grads, importance_points=importance_points, importance_grad=importance_grad, points_near=points_near, \
                  points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \

@@ -727,7 +727,7 @@ def ae_garments(N=8192):
 # def kl_garments(N=8192):
 #     return create_autoencoder(dim=512, M=512, latent_dim=32, N=N, determinisitc=False)
 def kl_garments(N=8192):
-    return create_autoencoder(dim=512, M=2048, latent_dim=32, N=N, determinisitc=False, v2=True)
+    return create_autoencoder(dim=1024, M=2048, latent_dim=32, N=N, determinisitc=False, v2=True)
 
 ###############
 

@@ -72,8 +72,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
     optimizer.zero_grad()
 
-    kl_weight = 1e-3
-    grad_weight = 1e-3
+    kl_weight = 1e-5
+    grad_weight = 1e-5
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
@@ -89,6 +89,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         labels = torch.clip(udf, 0, args.max_dist)
         surface = surface.to(device, non_blocking=True)
         gt_grads = gt_grads.to(device)
+
+        grads_mask = (udf < args.max_dist*0.1).reshape(*gt_grads.shape[:2])
         
         n_queries = points.shape[1]
 
@@ -105,7 +107,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             # Gradients loss
             if 'grads' in outputs:
                 grads = outputs['grads']
-                loss_grads = F.mse_loss(grads, gt_grads, reduce=True, reduction='mean')
+                loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=1)).mean()   # cosine distance (sqrt(2*(1-cos_sim)) ~ (1-cos_sim))
             else:
                 loss_grads = None
 
@@ -180,28 +182,43 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     )
                     ax4.cla()
                     # Plot predicted gradients in blue and gt gradients in red
-                    num_grad_samples = min(1000, sampled_points.shape[0])
-                    sample_idxs = np.random.choice(grads.shape[1], num_grad_samples, replace=False)
-                    pred_grads = grads[0].detach().cpu().numpy()[sample_idxs]
-                    gt_grads_np = gt_grads[0].detach().cpu().numpy()[sample_idxs]
-                    sampled_points = points[0].cpu().detach().numpy()[sample_idxs]
-                    # Sample only a subset of the gradients for visualization
+                    # sampled_points = points[grads_mask].reshape(-1, 3)
+                    # pred_grads = grads[grads_mask].detach().cpu().numpy()
+                    # gt_grads_np = gt_grads[grads_mask].detach().cpu().numpy()
+                    # num_grad_samples = min(1000, sampled_points.shape[0])
+                    # sample_idxs = np.random.choice(sampled_points.shape[0], num_grad_samples, replace=False)
+                    # pred_grads = pred_grads[sample_idxs]
+                    # gt_grads_np = gt_grads_np[sample_idxs]
+                    # sampled_points = sampled_points.cpu().detach().numpy()[sample_idxs]
+                    # # Sample only a subset of the gradients for visualization
 
-                    ax4.quiver(
-                        sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
-                        pred_grads[:, 0], pred_grads[:, 1], pred_grads[:, 2],
-                        color='blue', length=0.05, normalize=True, label='Predicted Gradients'
+                    # ax4.quiver(
+                    #     sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
+                    #     pred_grads[:, 0], pred_grads[:, 1], pred_grads[:, 2],
+                    #     color='blue', length=0.05, normalize=False, label='Predicted Gradients'
+                    # )
+                    # ax4.quiver(
+                    #     sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
+                    #     gt_grads_np[:, 0], gt_grads_np[:, 1], gt_grads_np[:, 2],
+                    #     color='red', length=0.05, normalize=False, label='GT Gradients'
+                    # )
+                    pts = points[grads_mask].detach().cpu().numpy()
+                    
+                    sc4 = ax4.scatter(
+                        pts[:, 0],
+                        pts[:, 1],
+                        pts[:, 2],
+                        c=cos_dist.flatten().detach().cpu().numpy(),
+                        label='Surface Points'
                     )
-                    ax4.quiver(
-                        sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
-                        gt_grads_np[:, 0], gt_grads_np[:, 1], gt_grads_np[:, 2],
-                        color='red', length=0.05, normalize=True, label='GT Gradients'
-                    )
+
                     
                     if epoch == 1 and data_iter_step == 0:
                         plt.colorbar(sc1, label='Labels')
                         plt.colorbar(sc2, label='Labels')
                         plt.colorbar(sc3, label='Labels')
+                        plt.colorbar(sc4, label='Gradient Cos Dist')
+
                     plt.draw()
                     plt.pause(1.5)
 
@@ -214,7 +231,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
                     grad = torch.zeros_like(x, device=x.device)
                     mask = udf < udf_th
-                    print(mask.sum(), udf.min(), udf_th)
 
                     if mask.sum() > 0:
                         x_grad = x[mask].clone().detach().requires_grad_(True).unsqueeze(0)
@@ -232,22 +248,23 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         grad[mask] = grads
                     return udf, -grad.detach()
                 
-                try:
-                    verts, faces = get_mesh_from_udf(
-                        udf_func=callable_udf_func,
-                        coords_range=(-1, 1),
-                        max_dist=0.1,
-                        N=256,
-                        use_fast_grid_filler=False,
-                        th_alpha=1.05,
-                        th_beta=1.75
-                    )
+                if epoch > 1:
+                    try:
+                        verts, faces = get_mesh_from_udf(
+                            udf_func=callable_udf_func,
+                            coords_range=(-1, 1),
+                            max_dist=0.1,
+                            N=256,
+                            use_fast_grid_filler=False,
+                            th_alpha=1.05,
+                            th_beta=1.75
+                        )
 
-                    mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
-                    mesh.export(f'mesh_output/final_{epoch}_{data_iter_step}.obj', file_type='obj')
-                    print(f"Mesh exported at mesh_output/final_{epoch}_{data_iter_step}.obj")
-                except Exception as e:
-                    print(e)
+                        mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
+                        mesh.export(f'mesh_output/final_{epoch}_{data_iter_step}.obj', file_type='obj')
+                        print(f"Mesh exported at mesh_output/final_{epoch}_{data_iter_step}.obj")
+                    except Exception as e:
+                        print(e)
 
             if loss_kl is not None:
                 loss = loss + kl_weight * loss_kl
