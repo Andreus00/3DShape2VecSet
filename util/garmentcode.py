@@ -332,21 +332,34 @@ class GarmentCode(data.Dataset):
 
             processing_func = process_garment_worker_meshbox_norm
             
-            with mp.get_context("spawn").Pool(processes=world_size) as pool:
-                results = list(tqdm.tqdm(
-                    pool.imap_unordered(
-                        partial(
-                            processing_func,
-                            mean_body_mean=self.mean_body_mean,
-                            force_occupancy=self.force_occupancy,
-                            max_dist=self.max_dist,
-                            body_model_normalization_alpha=self.body_model_normalization_alpha
-                        ),
-                        [(el, -1) for i, el in enumerate(self.mesh_folders)]
-                    ),
-                    total=len(self.mesh_folders)
-                ))
+            # with mp.get_context("spawn").Pool(processes=world_size) as pool:
+            #     results = list(tqdm.tqdm(
+            #         pool.imap_unordered(
+            #             partial(
+            #                 processing_func,
+            #                 mean_body_mean=self.mean_body_mean,
+            #                 force_occupancy=self.force_occupancy,
+            #                 max_dist=self.max_dist,
+            #                 body_model_normalization_alpha=self.body_model_normalization_alpha
+            #             ),
+            #             [(el, -1) for i, el in enumerate(self.mesh_folders)]
+            #         ),
+            #         total=len(self.mesh_folders)
+            #     ))
 
+            process = partial(
+                processing_func,
+                mean_body_mean=self.mean_body_mean,
+                force_occupancy=self.force_occupancy,
+                max_dist=self.max_dist,
+                body_model_normalization_alpha=self.body_model_normalization_alpha
+            )
+
+            # Run sequentially over the mesh folders
+            results = []
+            for el in tqdm.tqdm(self.mesh_folders):
+                result = process((el, -1))
+                results.append(result)
         # Store processed results
         self.models = [res for res in results if res]
 
