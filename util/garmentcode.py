@@ -32,71 +32,142 @@ category_ids = {
     # todo: add category ids if necessary
 }
 
-def build_pdf(A, normals, adj):
+# def build_pdf(A, normals, adj):
+#     n_faces = len(normals)
+
+#     # Step 1: Build sparse adjacency matrix (symmetric)
+#     rows = np.concatenate([adj[:, 0], adj[:, 1]])
+#     cols = np.concatenate([adj[:, 1], adj[:, 0]])
+#     data = np.ones(len(rows))
+#     adj_matrix = scipy.sparse.coo_matrix((data, (rows, cols)), shape=(n_faces, n_faces))
+
+#     # Step 2: Compute dot product between each face and its neighbors
+#     dot_products = adj_matrix.dot(normals)  # shape (n_faces, 3)
+#     normal_mags = np.linalg.norm(dot_products, axis=1)
+#     norm_normals = np.linalg.norm(normals, axis=1)
+#     denom = norm_normals * normal_mags + 1e-8
+#     cos_angles = np.einsum('ij,ij->i', normals, dot_products) / denom
+#     cos_angles = np.clip(cos_angles, -1.0, 1.0)
+#     angles = np.arccos(cos_angles)
+
+#     # Step 3: Count neighbors per face
+#     degree = np.asarray(adj_matrix.sum(axis=1)).flatten()
+#     degree = np.maximum(degree, 1)
+
+#     # Step 4: Average angle per face
+#     mean_angle = angles / degree
+
+#     # Step 5: Importance sampling weights
+#     detail = np.maximum(mean_angle, 1e-6)
+#     weights = A * detail
+#     pdf = weights / weights.sum()
+
+#     return pdf
+
+def build_pdf(A, normals, adj, device):
     n_faces = len(normals)
 
     # Step 1: Build sparse adjacency matrix (symmetric)
-    rows = np.concatenate([adj[:, 0], adj[:, 1]])
-    cols = np.concatenate([adj[:, 1], adj[:, 0]])
-    data = np.ones(len(rows))
-    adj_matrix = scipy.sparse.coo_matrix((data, (rows, cols)), shape=(n_faces, n_faces))
+    rows = torch.cat([adj[:, 0], adj[:, 1]])
+    cols = torch.cat([adj[:, 1], adj[:, 0]])
+    data = torch.ones(len(rows), device=device)
+    adj_matrix = torch.sparse_coo_tensor(
+        indices=torch.stack([rows, cols]),
+        values=data,
+        size=(n_faces, n_faces),
+        device=device
+    ).float()
 
     # Step 2: Compute dot product between each face and its neighbors
-    dot_products = adj_matrix.dot(normals)  # shape (n_faces, 3)
-    normal_mags = np.linalg.norm(dot_products, axis=1)
-    norm_normals = np.linalg.norm(normals, axis=1)
+    dot_products = torch.sparse.mm(adj_matrix, normals)  # shape (n_faces, 3)
+    normal_mags = torch.norm(dot_products, dim=1)
+    norm_normals = torch.norm(normals, dim=1)
     denom = norm_normals * normal_mags + 1e-8
-    cos_angles = np.einsum('ij,ij->i', normals, dot_products) / denom
-    cos_angles = np.clip(cos_angles, -1.0, 1.0)
-    angles = np.arccos(cos_angles)
+    cos_angles = (normals * dot_products).sum(dim=1) / denom
+    cos_angles = cos_angles.clamp(-1.0, 1.0)
+    angles = torch.arccos(cos_angles)
 
     # Step 3: Count neighbors per face
-    degree = np.asarray(adj_matrix.sum(axis=1)).flatten()
-    degree = np.maximum(degree, 1)
+    degree = torch.sparse.sum(adj_matrix, dim=1).to_dense()
+    degree = torch.clamp(degree, min=1.0)
 
     # Step 4: Average angle per face
     mean_angle = angles / degree
 
     # Step 5: Importance sampling weights
-    detail = np.maximum(mean_angle, 1e-6)
+    detail = torch.clamp(mean_angle, min=1e-6)
     weights = A * detail
     pdf = weights / weights.sum()
 
     return pdf
 
+# def importance_sampling(mesh, n_points=10_000):
+#     A = mesh.area_faces
+#     normals = mesh.face_normals
+#     adj = mesh.face_adjacency
 
-def importance_sampling(mesh, n_points=10_000):
-    A = mesh.area_faces
-    normals = mesh.face_normals
-    adj = mesh.face_adjacency
+#     # Sampling function
+#     def sample_points(pdf, n=1):
+#         f_idx = np.random.choice(len(mesh.faces), size=n, p=pdf)
+#         v = mesh.vertices[mesh.faces[f_idx]]
+#         r = np.random.rand(n, 2)
+#         sqrt_r1 = np.sqrt(r[:, 0])[:, None]
+#         u = 1 - sqrt_r1
+#         w = r[:, 1:2] * sqrt_r1
+#         pts = u * v[:, 0] + w * v[:, 1] + (1 - u - w) * v[:, 2]
 
-    # Sampling function
+#         # Calculate triangle normal and use it as a gradient for the sampled points
+#         grads = np.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
+#         grads = grads / (np.linalg.norm(grads, axis=1, keepdims=True) + 1e-8)
+#         return pts, grads
+
+#     pdf = build_pdf(A, normals, adj)
+
+#     # Sample
+#     points, grads = sample_points(pdf=pdf, n=n_points)
+    
+#     return points, grads
+
+
+def importance_sampling(mesh, n_points=10_000, device="cuda"):
+    A = torch.tensor(mesh.area_faces, device=device).float()
+    normals = torch.tensor(mesh.face_normals, device=device).float()
+    adj = torch.tensor(mesh.face_adjacency, device=device).float()
+
+    faces = torch.tensor(mesh.faces, device=device)
+    vertices = torch.tensor(mesh.vertices, device=device)
+
     def sample_points(pdf, n=1):
-        f_idx = np.random.choice(len(mesh.faces), size=n, p=pdf)
-        v = mesh.vertices[mesh.faces[f_idx]]
-        r = np.random.rand(n, 2)
-        sqrt_r1 = np.sqrt(r[:, 0])[:, None]
+        f_idx = torch.multinomial(pdf, num_samples=n, replacement=True)
+        v = vertices[faces[f_idx]]  # shape: (n, 3, 3)
+
+        r = torch.rand((n, 2), device=device)
+        sqrt_r1 = torch.sqrt(r[:, :1])
         u = 1 - sqrt_r1
-        w = r[:, 1:2] * sqrt_r1
+        w = r[:, 1:] * sqrt_r1
         pts = u * v[:, 0] + w * v[:, 1] + (1 - u - w) * v[:, 2]
 
-        # Calculate triangle normal and use it as a gradient for the sampled points
-        grads = np.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
-        grads = grads / (np.linalg.norm(grads, axis=1, keepdims=True) + 1e-8)
+        # Compute normals (gradients) via cross product
+        grads = torch.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
+        grads = grads / (torch.norm(grads, dim=1, keepdim=True) + 1e-8)
+
         return pts, grads
 
-    pdf = build_pdf(A, normals, adj)
+    pdf = build_pdf(A, normals, adj, device=device)
 
-    # Sample
-    points, grads = sample_points(pdf=pdf, n=n_points)
-    
+    points, grads = sample_points(pdf, n=n_points)
+
     return points, grads
+
 
 def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha):
     """Processes a single garment on a specific GPU."""
 
     subpath, gpu_id = args
-    torch.cuda.set_device(gpu_id)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    if 'cuda' in device:
+        torch.cuda.set_device(gpu_id)
+        print('set device ', gpu_id)
 
     g = subpath.split('/')[-1]
     if not os.path.isdir(subpath):
@@ -143,7 +214,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
             print(f"Warning: Normalization Failed. shifts are not close to origin (shifts={shifts}) for {model_file}")
 
-        surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000)
+        surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
 
         # # Visualization: plot 10,000 points from each set (points_near, points_rand, surface)
         # fig = plt.figure(figsize=(18, 5))
@@ -173,13 +244,13 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         # plt.show()
         # plt.pause(10)
 
-        mesh_trimesh = tri.load(str(model_file))
-        mesh_trimesh.vertices -= shifts
-        mesh_trimesh.vertices *= scale
+        # mesh_trimesh = tri.load(str(model_file))
+        # mesh_trimesh.vertices -= shifts
+        # mesh_trimesh.vertices *= scale
 
-        importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000)
+        importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
 
-        np.savez(udf_path, surface=surface, surface_grads=surface_grads, importance_points=importance_points, importance_grad=importance_grad, points_near=points_near, \
+        np.savez(udf_path, surface=surface, surface_grads=surface_grads, importance_points=importance_points.detach().cpu(), importance_grad=importance_grad.detach().cpu(), points_near=points_near, \
                  points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \
                     gradients_rand=gradients_rand)
         del surface, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand
@@ -225,9 +296,9 @@ class GarmentCode(data.Dataset):
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
             split_idx = (len(self.mesh_folders) * 80) // 100
             if self.split == "training":
-                self.mesh_folders = self.mesh_folders[:split_idx][1:2]
+                self.mesh_folders = self.mesh_folders[:split_idx]
             elif self.split == "validation":
-                self.mesh_folders = self.mesh_folders[:split_idx][1:2]
+                self.mesh_folders = self.mesh_folders[:split_idx]
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
@@ -236,24 +307,46 @@ class GarmentCode(data.Dataset):
         # Parallen gpu running
         
         world_size = torch.cuda.device_count()
-        print(f"Using {world_size} GPUs")
+        if world_size > 0:
+            print(f"Using {world_size} GPUs")
 
-        processing_func = process_garment_worker_meshbox_norm
-        
-        with mp.get_context("spawn").Pool(processes=world_size) as pool:
-            results = list(tqdm.tqdm(
-                pool.imap_unordered(
-                    partial(
-                        processing_func,
-                        mean_body_mean=self.mean_body_mean,
-                        force_occupancy=self.force_occupancy,
-                        max_dist=self.max_dist,
-                        body_model_normalization_alpha=self.body_model_normalization_alpha
+            processing_func = process_garment_worker_meshbox_norm
+            
+            with mp.get_context("spawn").Pool(processes=world_size) as pool:
+                results = list(tqdm.tqdm(
+                    pool.imap_unordered(
+                        partial(
+                            processing_func,
+                            mean_body_mean=self.mean_body_mean,
+                            force_occupancy=self.force_occupancy,
+                            max_dist=self.max_dist,
+                            body_model_normalization_alpha=self.body_model_normalization_alpha
+                        ),
+                        [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
                     ),
-                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
-                ),
-                total=len(self.mesh_folders)
-            ))
+                    total=len(self.mesh_folders)
+                ))
+        else:
+            world_size = os.cpu_count()
+            print(f"Using {world_size} CPU")
+
+            processing_func = process_garment_worker_meshbox_norm
+            
+            with mp.get_context("spawn").Pool(processes=world_size) as pool:
+                results = list(tqdm.tqdm(
+                    pool.imap_unordered(
+                        partial(
+                            processing_func,
+                            mean_body_mean=self.mean_body_mean,
+                            force_occupancy=self.force_occupancy,
+                            max_dist=self.max_dist,
+                            body_model_normalization_alpha=self.body_model_normalization_alpha
+                        ),
+                        [(el, -1) for i, el in enumerate(self.mesh_folders)]
+                    ),
+                    total=len(self.mesh_folders)
+                ))
+
         # Store processed results
         self.models = [res for res in results if res]
 

@@ -53,13 +53,14 @@ def compute_udf_and_gradients(
     vertices: np.ndarray,
     triangles: np.ndarray,
     queries: torch.Tensor,
+    device='cuda',
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     scene = o3d.t.geometry.RaycastingScene()
     _ = scene.add_triangles(vertices, triangles)
 
     #signed_distance = scene.compute_signed_distance(query_point)
-    closest_points = scene.compute_closest_points(queries.numpy())["points"]
-    closest_points = torch.tensor(closest_points.numpy())
+    closest_points = scene.compute_closest_points(queries.detach().cpu().numpy())["points"]
+    closest_points = torch.tensor(closest_points.numpy(), device=device)
 
     q2p = queries - closest_points
     udf = torch.linalg.vector_norm(q2p, dim=-1)
@@ -91,23 +92,23 @@ def compute_udf_from_mesh(
             coords_range,
             device,
         )
-    near_coords = near_coords.cpu()
-    random_coords = random_coords.cpu()
+    near_coords = near_coords.to(device)
+    random_coords = random_coords.to(device)
 
     vertices = np.asarray(mesh_trimesh.vertices, dtype=np.float32)
     faces = np.asarray(mesh_trimesh.faces, dtype=np.uint32)
-    udf_near, gradients_near = compute_udf_and_gradients(vertices, faces, near_coords)
-    udf_rand, gradients_rand = compute_udf_and_gradients(vertices, faces, random_coords)
+    udf_near, gradients_near = compute_udf_and_gradients(vertices, faces, near_coords, device=device)
+    udf_rand, gradients_rand = compute_udf_and_gradients(vertices, faces, random_coords, device=device)
 
     return near_coords, udf_near, gradients_near, random_coords, udf_rand, gradients_rand
 
 
-def sample_udf_from_mesh(mesh_trimesh: trimesh.Trimesh, number_of_points: int):
+def sample_udf_from_mesh(mesh_trimesh: trimesh.Trimesh, number_of_points: int, device='cuda'):
     
     pcd, face_idx = mesh_trimesh.sample(count=number_of_points, return_index=True) # .sample_points_uniformly(number_of_points=number_of_points)
 
-    surface = torch.asarray(pcd).float()
-    surface_grads = torch.asarray(mesh_trimesh.face_normals[face_idx]).float()
+    surface = torch.asarray(pcd).float().to(device)
+    surface_grads = torch.asarray(mesh_trimesh.face_normals[face_idx]).float().to(device)
 
 
     coords_near, udf_near, gradients_near, coords_rand, udf_rand, gradients_rand = compute_udf_from_mesh(
@@ -122,15 +123,20 @@ def sample_udf_from_mesh(mesh_trimesh: trimesh.Trimesh, number_of_points: int):
                              125_000,
                              125_000,
                         250_000],
+        device=device
     )
 
     # udf_near = torch.cat((udf_near, torch.zeros(surface.shape[0], device=udf_near.device)), dim=0)
     # gradients_near = torch.cat((gradients_near, torch.zeros_like(surface)), dim=0)
-    perm_idxs = torch.randperm(coords_near.shape[0])
+    perm_idxs = torch.randperm(coords_near.shape[0], device=device)
     coords_near = coords_near[perm_idxs].detach().cpu().numpy()
     udf_near = udf_near[perm_idxs].detach().cpu().numpy()
     gradients_near = gradients_near[perm_idxs].detach().cpu().numpy()
     surface = surface.detach().cpu().numpy()
+    surface_grads = surface_grads.detach().cpu().numpy()
+    coords_rand = surface_grads
+    udf_rand = udf_rand.detach().cpu().numpy()
+    gradients_rand = gradients_rand.detach().cpu().numpy()
 
 
     return surface, surface_grads, coords_near, udf_near, gradients_near, coords_rand, udf_rand, gradients_rand
