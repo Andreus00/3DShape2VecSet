@@ -200,19 +200,45 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
                 latent = model.encode(surface[:1])[1]
 
-                def callable_udf_func(x):
-                    return model.decode(latent.detach().clone(), x.unsqueeze(0)).flatten()
+                def callable_udf_func(x, udf_th):
+                    with torch.no_grad():
+                        x_nograd = x.clone().detach().to(device).unsqueeze(0)
+                        udf = model.decode(latent.detach(), x_nograd).flatten()
+
+                    grad = torch.zeros_like(x, device=x.device)
+                    mask = udf < udf_th
+                    print(mask.sum(), udf.min(), udf_th)
+
+                    if mask.sum() > 0:
+                        x_grad = x[mask].clone().detach().requires_grad_(True).unsqueeze(0)
+                        udf_grad = model.decode(latent.detach(), x_grad).flatten()
+                        grad_outputs = torch.ones_like(udf_grad)
+                        grads = torch.autograd.grad(
+                            outputs=udf_grad,
+                            inputs=x_grad,
+                            grad_outputs=grad_outputs,
+                            create_graph=False,
+                            retain_graph=False,
+                            only_inputs=True,
+                            allow_unused=True
+                        )[0]
+                        grad[mask] = grads
+                    return udf, -grad.detach()
+                
                 try:
                     verts, faces = get_mesh_from_udf(
                         udf_func=callable_udf_func,
                         coords_range=(-1, 1),
                         max_dist=0.1,
                         N=64,
-                        use_fast_grid_filler=False
+                        use_fast_grid_filler=False,
+                        th_alpha=1.05,
+                        th_beta=1.75
                     )
 
                     mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
                     mesh.export(f'mesh_output/final_{epoch}_{data_iter_step}.obj', file_type='obj')
+                    print(f"Mesh exported at mesh_output/final_{epoch}_{data_iter_step}.obj")
                 except Exception as e:
                     print(e)
 
