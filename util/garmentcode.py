@@ -225,10 +225,9 @@ class GarmentCode(data.Dataset):
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
             split_idx = (len(self.mesh_folders) * 80) // 100
             if self.split == "training":
-                self.mesh_folders = self.mesh_folders[:split_idx][:1]
+                self.mesh_folders = self.mesh_folders[:split_idx][1:2]
             elif self.split == "validation":
-                # self.mesh_folders = self.mesh_folders[split_idx:][:1]
-                self.mesh_folders = self.mesh_folders[:split_idx][:1]
+                self.mesh_folders = self.mesh_folders[:split_idx][1:2]
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
