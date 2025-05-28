@@ -19,38 +19,43 @@ import matplotlib.pyplot as plt
 from custom_mc.meshudf import get_mesh_from_udf
 import trimesh
 
-fig = plt.figure(figsize=(10, 8))
-ax1 = fig.add_subplot(141, projection='3d')
-ax1.set_xlabel('X')
-ax1.set_ylabel('Y')
-ax1.set_zlabel('Z')
-ax1.legend()
-ax2 = fig.add_subplot(142, projection='3d')
-ax2.set_xlabel('X')
-ax2.set_ylabel('Y')
-ax2.set_zlabel('Z')
-ax2.legend()
-ax3 = fig.add_subplot(143, projection='3d')
-ax3.set_xlabel('X')
-ax3.set_ylabel('Y')
-ax3.set_zlabel('Z')
-ax3.legend()
-ax4 = fig.add_subplot(144, projection='3d')
-ax4.set_xlabel('X')
-ax4.set_ylabel('Y')
-ax4.set_zlabel('Z')
-ax4.legend()
+PLOT = False
 
-plt.title('3D Point Cloud with Labels as Color')
+if PLOT:
+    fig = plt.figure(figsize=(10, 8))
+    ax1 = fig.add_subplot(141, projection='3d')
+    ax1.set_xlabel('X')
+    ax1.set_ylabel('Y')
+    ax1.set_zlabel('Z')
+    ax1.legend()
+    ax2 = fig.add_subplot(142, projection='3d')
+    ax2.set_xlabel('X')
+    ax2.set_ylabel('Y')
+    ax2.set_zlabel('Z')
+    ax2.legend()
+    ax3 = fig.add_subplot(143, projection='3d')
+    ax3.set_xlabel('X')
+    ax3.set_ylabel('Y')
+    ax3.set_zlabel('Z')
+    ax3.legend()
+    ax4 = fig.add_subplot(144, projection='3d')
+    ax4.set_xlabel('X')
+    ax4.set_ylabel('Y')
+    ax4.set_zlabel('Z')
+    ax4.legend()
 
-plt.ion()
-plt.show()
+    plt.title('3D Point Cloud with Labels as Color')
+
+    plt.ion()
+    plt.show()
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0,
                     log_writer=None, args=None):
-    global ax1, ax2, ax3, ax4
+    
+    if PLOT:
+        global ax1, ax2, ax3, ax4
 
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
@@ -114,89 +119,91 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             loss = loss_near + loss_rand + loss_srf
 
             if epoch % 1 == 0 and data_iter_step == 0:
-                # Pick 10,000 random points
-                sampled_points = points[0].cpu().detach().numpy()
-                sampled_labels = outputs[0].detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
-                # Plot in 3D using labels as color
-                ax1.cla()
-                # ax1 = fig.add_subplot(131, projection='3d')
-                sc1 = ax1.scatter(
-                    sampled_points[:, 0],
-                    sampled_points[:, 1],
-                    sampled_points[:, 2],
-                    c=sampled_labels,
-                    cmap='viridis',
-                    s=1
-                )
-                # Plot surface points in red
-                # surface_points = surface[0].cpu().detach().numpy()
-                # ax1.scatter(
-                #     surface_points[:, 0],
-                #     surface_points[:, 1],
-                #     surface_points[:, 2],
-                #     c='red',
-                #     label='Surface Points'
-                # )
-                sampled_points = points[0].cpu().detach().numpy()
-                sampled_labels = (outputs[0].flatten() - labels[0].flatten()).abs().detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
-                ax2.cla()
-                # ax2 = fig.add_subplot(132, projection='3d')
-                sc2 = ax2.scatter(
-                    sampled_points[:, 0],
-                    sampled_points[:, 1],
-                    sampled_points[:, 2],
-                    c=sampled_labels,
-                    cmap='viridis',
-                    s=1
-                )
-                # Plot surface points in red
-                # surface_points = surface[0].cpu().detach().numpy()
-                # ax2.scatter(
-                #     surface_points[:, 0],
-                #     surface_points[:, 1],
-                #     surface_points[:, 2],
-                #     c='red',
-                #     label='Random Points'
-                # )
 
-                sampled_points = points[0].cpu().detach().numpy()
-                sampled_labels = labels[0].detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
-                ax3.cla()
-                # ax3 = fig.add_subplot(133, projection='3d')
-                sc3 = ax3.scatter(
-                    sampled_points[:, 0],
-                    sampled_points[:, 1],
-                    sampled_points[:, 2],
-                    c=sampled_labels,
-                    cmap='viridis',
-                    s=1
-                )
-                ax4.cla()
-                # Plot predicted gradients in blue and gt gradients in red
-                num_grad_samples = min(1000, sampled_points.shape[0])
-                sample_idxs = np.random.choice(grads.shape[1], num_grad_samples, replace=False)
-                pred_grads = grads[0].detach().cpu().numpy()[sample_idxs]
-                gt_grads_np = gt_grads[0].detach().cpu().numpy()[sample_idxs]
-                sampled_points = points[0].cpu().detach().numpy()[sample_idxs]
-                # Sample only a subset of the gradients for visualization
+                if PLOT:
+                    # Pick 10,000 random points
+                    sampled_points = points[0].cpu().detach().numpy()
+                    sampled_labels = outputs[0].detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
+                    # Plot in 3D using labels as color
+                    ax1.cla()
+                    # ax1 = fig.add_subplot(131, projection='3d')
+                    sc1 = ax1.scatter(
+                        sampled_points[:, 0],
+                        sampled_points[:, 1],
+                        sampled_points[:, 2],
+                        c=sampled_labels,
+                        cmap='viridis',
+                        s=1
+                    )
+                    # Plot surface points in red
+                    # surface_points = surface[0].cpu().detach().numpy()
+                    # ax1.scatter(
+                    #     surface_points[:, 0],
+                    #     surface_points[:, 1],
+                    #     surface_points[:, 2],
+                    #     c='red',
+                    #     label='Surface Points'
+                    # )
+                    sampled_points = points[0].cpu().detach().numpy()
+                    sampled_labels = (outputs[0].flatten() - labels[0].flatten()).abs().detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
+                    ax2.cla()
+                    # ax2 = fig.add_subplot(132, projection='3d')
+                    sc2 = ax2.scatter(
+                        sampled_points[:, 0],
+                        sampled_points[:, 1],
+                        sampled_points[:, 2],
+                        c=sampled_labels,
+                        cmap='viridis',
+                        s=1
+                    )
+                    # Plot surface points in red
+                    # surface_points = surface[0].cpu().detach().numpy()
+                    # ax2.scatter(
+                    #     surface_points[:, 0],
+                    #     surface_points[:, 1],
+                    #     surface_points[:, 2],
+                    #     c='red',
+                    #     label='Random Points'
+                    # )
 
-                ax4.quiver(
-                    sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
-                    pred_grads[:, 0], pred_grads[:, 1], pred_grads[:, 2],
-                    color='blue', length=0.05, normalize=True, label='Predicted Gradients'
-                )
-                ax4.quiver(
-                    sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
-                    gt_grads_np[:, 0], gt_grads_np[:, 1], gt_grads_np[:, 2],
-                    color='red', length=0.05, normalize=True, label='GT Gradients'
-                )
-                
-                if epoch == 1 and data_iter_step == 0:
-                    plt.colorbar(sc1, label='Labels')
-                    plt.colorbar(sc2, label='Labels')
-                    plt.colorbar(sc3, label='Labels')
-                plt.draw()
-                plt.pause(1.5)
+                    sampled_points = points[0].cpu().detach().numpy()
+                    sampled_labels = labels[0].detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
+                    ax3.cla()
+                    # ax3 = fig.add_subplot(133, projection='3d')
+                    sc3 = ax3.scatter(
+                        sampled_points[:, 0],
+                        sampled_points[:, 1],
+                        sampled_points[:, 2],
+                        c=sampled_labels,
+                        cmap='viridis',
+                        s=1
+                    )
+                    ax4.cla()
+                    # Plot predicted gradients in blue and gt gradients in red
+                    num_grad_samples = min(1000, sampled_points.shape[0])
+                    sample_idxs = np.random.choice(grads.shape[1], num_grad_samples, replace=False)
+                    pred_grads = grads[0].detach().cpu().numpy()[sample_idxs]
+                    gt_grads_np = gt_grads[0].detach().cpu().numpy()[sample_idxs]
+                    sampled_points = points[0].cpu().detach().numpy()[sample_idxs]
+                    # Sample only a subset of the gradients for visualization
+
+                    ax4.quiver(
+                        sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
+                        pred_grads[:, 0], pred_grads[:, 1], pred_grads[:, 2],
+                        color='blue', length=0.05, normalize=True, label='Predicted Gradients'
+                    )
+                    ax4.quiver(
+                        sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
+                        gt_grads_np[:, 0], gt_grads_np[:, 1], gt_grads_np[:, 2],
+                        color='red', length=0.05, normalize=True, label='GT Gradients'
+                    )
+                    
+                    if epoch == 1 and data_iter_step == 0:
+                        plt.colorbar(sc1, label='Labels')
+                        plt.colorbar(sc2, label='Labels')
+                        plt.colorbar(sc3, label='Labels')
+                    plt.draw()
+                    plt.pause(1.5)
 
                 latent = model.encode(surface[:1])[1]
 
@@ -230,7 +237,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         udf_func=callable_udf_func,
                         coords_range=(-1, 1),
                         max_dist=0.1,
-                        N=64,
+                        N=256,
                         use_fast_grid_filler=False,
                         th_alpha=1.05,
                         th_beta=1.75
