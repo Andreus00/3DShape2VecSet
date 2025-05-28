@@ -39,9 +39,9 @@ def get_args_parser():
     parser.add_argument('--num_samples', default=16_384*2, type=int,
                         help='input size')
     
-    parser.add_argument('--random_samples_ratio', default=0.1, type=int,
+    parser.add_argument('--random_samples_ratio', default=0.2, type=int,
                         help='ratio of random points in a batch.')
-    parser.add_argument('--surface_samples_ratio', default=0.4, type=int,
+    parser.add_argument('--surface_samples_ratio', default=0.15, type=int,
                         help='ratio of random points in a batch.')
 
     # Optimizer parameters

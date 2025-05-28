@@ -210,6 +210,9 @@ class GarmentCode(data.Dataset):
         self.n_sfc_pts = int(surface_samples_ratio * num_samples)
         self.n_near_pts = num_samples - (self.n_rnd_pts + self.n_sfc_pts)
 
+        print(self.n_rnd_pts, self.n_sfc_pts, self.n_near_pts)
+        exit()
+
         # Load split file
         train_val_test_path = os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json')
         if os.path.exists(train_val_test_path):
