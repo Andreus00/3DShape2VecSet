@@ -327,7 +327,7 @@ class GarmentCode(data.Dataset):
                     total=len(self.mesh_folders)
                 ))
         else:
-            world_size = os.cpu_count()
+            world_size = min(8, os.cpu_count())
             print(f"Using {world_size} CPU")
 
             processing_func = process_garment_worker_meshbox_norm
