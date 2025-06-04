@@ -3,3 +3,7 @@ __pycache__
 logs
 server-ckpt
 mesh_output
+_final*
+_marching*
+mesh_output*
+My_MC*
