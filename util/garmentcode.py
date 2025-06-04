@@ -25,6 +25,7 @@ from .process_udf import sample_udf_from_mesh
 import torch.multiprocessing as mp
 from functools import partial
 import time
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import scipy.sparse
 
@@ -167,7 +168,6 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if 'cuda' in device:
         torch.cuda.set_device(gpu_id)
-        print('set device ', gpu_id)
 
     g = subpath.split('/')[-1]
     if not os.path.isdir(subpath):
@@ -199,6 +199,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
         # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
         mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
+        mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
         b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
         shifts = (b_max + b_min) / 2
         mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
@@ -296,9 +297,9 @@ class GarmentCode(data.Dataset):
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
             split_idx = (len(self.mesh_folders) * 80) // 100
             if self.split == "training":
-                self.mesh_folders = self.mesh_folders[:split_idx]
+                self.mesh_folders = self.mesh_folders[:split_idx][:1]
             elif self.split == "validation":
-                self.mesh_folders = self.mesh_folders[:split_idx]
+                self.mesh_folders = self.mesh_folders[:split_idx][:1]
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
@@ -309,57 +310,25 @@ class GarmentCode(data.Dataset):
         world_size = torch.cuda.device_count()
         if world_size > 0:
             print(f"Using {world_size} GPUs")
-
-            processing_func = process_garment_worker_meshbox_norm
-            
-            with mp.get_context("spawn").Pool(processes=world_size) as pool:
-                results = list(tqdm.tqdm(
-                    pool.imap_unordered(
-                        partial(
-                            processing_func,
-                            mean_body_mean=self.mean_body_mean,
-                            force_occupancy=self.force_occupancy,
-                            max_dist=self.max_dist,
-                            body_model_normalization_alpha=self.body_model_normalization_alpha
-                        ),
-                        [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
-                    ),
-                    total=len(self.mesh_folders)
-                ))
         else:
             world_size = min(16, os.cpu_count())
-            print(f"Using {world_size} CPU")
+        processing_func = process_garment_worker_meshbox_norm
+        
+        with mp.get_context("spawn").Pool(processes=world_size) as pool:
+            results = list(tqdm.tqdm(
+                pool.imap_unordered(
+                    partial(
+                        processing_func,
+                        mean_body_mean=self.mean_body_mean,
+                        force_occupancy=self.force_occupancy,
+                        max_dist=self.max_dist,
+                        body_model_normalization_alpha=self.body_model_normalization_alpha
+                    ),
+                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
+                ),
+                total=len(self.mesh_folders)
+            ))
 
-            processing_func = process_garment_worker_meshbox_norm
-            
-            # with mp.get_context("spawn").Pool(processes=world_size) as pool:
-            #     results = list(tqdm.tqdm(
-            #         pool.imap_unordered(
-            #             partial(
-            #                 processing_func,
-            #                 mean_body_mean=self.mean_body_mean,
-            #                 force_occupancy=self.force_occupancy,
-            #                 max_dist=self.max_dist,
-            #                 body_model_normalization_alpha=self.body_model_normalization_alpha
-            #             ),
-            #             [(el, -1) for i, el in enumerate(self.mesh_folders)]
-            #         ),
-            #         total=len(self.mesh_folders)
-            #     ))
-
-            process = partial(
-                processing_func,
-                mean_body_mean=self.mean_body_mean,
-                force_occupancy=self.force_occupancy,
-                max_dist=self.max_dist,
-                body_model_normalization_alpha=self.body_model_normalization_alpha
-            )
-
-            # Run sequentially over the mesh folders
-            results = []
-            for el in tqdm.tqdm(self.mesh_folders):
-                result = process((el, -1))
-                results.append(result)
         # Store processed results
         self.models = [res for res in results if res]
 

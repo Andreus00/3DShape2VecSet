@@ -58,13 +58,69 @@ def compute_udf_and_gradients(
     scene = o3d.t.geometry.RaycastingScene()
     _ = scene.add_triangles(vertices, triangles)
 
-    #signed_distance = scene.compute_signed_distance(query_point)
-    closest_points = scene.compute_closest_points(queries.detach().cpu().numpy())["points"]
-    closest_points = torch.tensor(closest_points.numpy(), device=device)
+    # compute the closest point on surface for queries
+    closest_points_info = scene.compute_closest_points(queries.detach().cpu().numpy())
+    closest_points = closest_points_info["points"]
+    closest_points_triangles = np.asarray(closest_points_info["primitive_ids"].numpy()).astype(np.int8)
+    # Get the normal of the triangle where the closest points are
+    # exit()
+
+    tri = vertices[triangles[closest_points_triangles]]
+    tri_norm, _ = trimesh.triangles.normals(tri)
+    triangle_normals = torch.as_tensor(tri_norm, device=device)
+    closest_normals = triangle_normals[closest_points_triangles]
+    closest_points = torch.as_tensor(closest_points.numpy(), device=device)
 
     q2p = queries - closest_points
     udf = torch.linalg.vector_norm(q2p, dim=-1)
-    gradients = torch.nn.functional.normalize(q2p, dim=-1)
+    gradients = q2p # torch.nn.functional.normalize(q2p, dim=-1)
+
+
+    # # Compute sign for SDF: negative inside, positive outside
+    # signed_distances = scene.compute_signed_distance(queries.detach().cpu().numpy())
+    # sign = torch.sign(torch.tensor(signed_distances.numpy(), device=device))
+    # sdf = udf * sign
+
+    # # Check alignment between gradient and closest normal based on sdf sign
+    # cos_sim = torch.sign(torch.nn.functional.cosine_similarity(gradients, closest_normals, dim=-1))
+    # # For positive sdf, gradient and normal should be opposite (cos < 0)
+    # # For negative sdf, gradient and normal should be aligned (cos > 0)
+    # check = torch.where(sign > 0, cos_sim > 0, cos_sim < 0)
+
+    # # Select points with low UDF (< 1e-3)
+    # num_lowest = min(50, udf.shape[0])
+    # lowest_indices = torch.topk(udf, num_lowest, largest=False).indices
+    # rand_idxs = torch.randint(0, udf.shape[0], (50,), device=lowest_indices.device)
+    # indices = torch.cat([lowest_indices, rand_idxs])
+    
+    # if not torch.all(check):
+    #     print("Warning: Some gradients and normals do not match expected direction based on sdf sign.")
+    #     bad_indices = torch.nonzero(~check).squeeze()
+    #     print(f"Indices of points with incorrect sign: {len(bad_indices)}")
+    #     indices =  bad_indices[:100]
+
+    # low_udf_points = queries[indices]
+    # low_grad_points = gradients[indices]
+    # sdf_pts = sdf[indices]
+    # # Plotting
+    # import matplotlib.pyplot as plt
+    # import matplotlib.cm as cm
+    # colormap = cm.inferno
+
+    # if low_udf_points.shape[0] > 0:
+
+    #     fig = plt.figure()
+    #     ax = fig.add_subplot(111, projection='3d')
+    #     pts = low_udf_points.detach().cpu().numpy()
+    #     grd = low_grad_points.detach().cpu().numpy()
+    #     sdf_pts = torch.sign(sdf_pts).detach().cpu().numpy()
+    #     ax.quiver(pts[:, 0], pts[:, 1], pts[:, 2], grd[:, 0], grd[:, 1], grd[:, 2], color=colormap(sdf_pts), normalize=True)
+    #     # Add the sphere mesh to the plot
+    #     ax.plot_trisurf(vertices[:, 0], vertices[:,1], triangles=triangles, Z=vertices[:,2], color='g')
+    #     ax.set_title('Points with UDF < 1e-3')
+        
+    #     plt.show()
+    #     plt.pause(100)
 
     return udf, gradients
 
@@ -95,10 +151,62 @@ def compute_udf_from_mesh(
     near_coords = near_coords.to(device)
     random_coords = random_coords.to(device)
 
+    mesh_trimesh = mesh_trimesh
     vertices = np.asarray(mesh_trimesh.vertices, dtype=np.float32)
     faces = np.asarray(mesh_trimesh.faces, dtype=np.uint32)
+    
     udf_near, gradients_near = compute_udf_and_gradients(vertices, faces, near_coords, device=device)
     udf_rand, gradients_rand = compute_udf_and_gradients(vertices, faces, random_coords, device=device)
+
+    # import matplotlib.pyplot as plt
+    # for i in range(0, 20):
+    #     fig = plt.figure(figsize=(10, 10))
+    #     ax = fig.add_subplot(111)
+    #     z_vals = random_coords[:, 2].detach().cpu().numpy()
+    #     z_center = z_vals.min() + i * (z_vals.max() - z_vals.min()) / 20
+    #     print(z_center)
+        
+    #     # Create a 2D grid of points at z_center
+    #     num_grid = 1024
+    #     x = np.linspace(coords_range[0], coords_range[1], num_grid)
+    #     y = np.linspace(coords_range[0], coords_range[1], num_grid)
+    #     xx, yy = np.meshgrid(x, y)
+    #     plane_points = np.stack([xx.ravel(), yy.ravel(), np.full(xx.size, z_center)], axis=-1)
+    #     plane_points_torch = torch.tensor(plane_points, dtype=torch.float32, device=device)
+
+    #     # Compute UDF and gradients for the plane points
+    #     udf_plane, grads_plane = compute_udf_and_gradients(vertices, faces, plane_points_torch, device=device)
+
+    #     # Plot the UDF values on the plane
+    #     udf_plane_np = udf_plane.detach().cpu().numpy().reshape(num_grid, num_grid)
+    #     ax.contourf(xx, yy, udf_plane_np, levels=300, cmap='plasma', alpha=0.5)
+
+        # # slice_points = random_coords[slice_mask].detach().cpu().numpy()
+
+        # # slice_pred_udf = udf_rand[slice_mask].detach().cpu().numpy()
+
+        # # slice_gradients = gradients_rand[slice_mask].detach().cpu().numpy()
+        # # ax.quiver(
+        # #     slice_points[:, 0],
+        # #     slice_points[:, 1],
+        # #     slice_gradients[:, 0],
+        # #     slice_gradients[:, 1],
+        # #     angles='xy',
+        # #     scale_units='xy',
+        # #     scale=10,
+        # #     color='red',
+        # #     width=0.003,
+        # #     alpha=0.7,
+        # # )
+
+        # sc_pred = ax.scatter(slice_points[:, 0], slice_points[:, 1], c=slice_pred_udf, cmap='viridis', s=2)
+        # ax.set_title('Predicted UDF (central slice)')
+        # ax.set_xlabel('X')
+        # ax.set_ylabel('Y')
+
+        # plt.tight_layout()
+        # plt.show()
+        # plt.pause(10)
 
     return near_coords, udf_near, gradients_near, random_coords, udf_rand, gradients_rand
 
@@ -134,7 +242,7 @@ def sample_udf_from_mesh(mesh_trimesh: trimesh.Trimesh, number_of_points: int, d
     gradients_near = gradients_near[perm_idxs].detach().cpu().numpy()
     surface = surface.detach().cpu().numpy()
     surface_grads = surface_grads.detach().cpu().numpy()
-    coords_rand = surface_grads
+    coords_rand = coords_rand.detach().cpu().numpy()
     udf_rand = udf_rand.detach().cpu().numpy()
     gradients_rand = gradients_rand.detach().cpu().numpy()
 

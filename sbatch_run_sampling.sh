@@ -4,16 +4,16 @@
 
 #SBATCH -J point-sampling                # Job name
 #SBATCH --ntasks=1                 # Number of tasks
-#SBATCH --cpus-per-task=32          # Number of CPU cores per task
+#SBATCH --cpus-per-task=8          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
 #SBATCH --partition=2080-galvani   # Which partition will run your job
 #SBATCH --time=0-20:00             # Allowed runtime in D-HH:MM
-#SBATCH --mem=50G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
-#SBATCH --gres=gpu:8
+#SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
+#SBATCH --gres=gpu:4
 #SBATCH --output=./logs/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
 #SBATCH --error=./logs/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
-#SBATCH --mail-user=andrea.sanchietti@unituebingen.de   # Email to which notifications will be sent
+#SBATCH --mail-user=andrea.sanchietti@uni-tuebingen.de   # Email to which notifications will be sent
 
 # Diagnostic and Analysis Phase - please leave these in.
 scontrol show job $SLURM_JOB_ID

@@ -287,6 +287,7 @@ def get_udf_and_grads(
     max_batch: int,
     th_dist: float,
     grad=True,
+    device='cpu'
 ) -> Tuple[Tensor, Tensor]:
     """
     Fills a dense N*N*N regular grid by querying the given function.
@@ -318,7 +319,7 @@ def get_udf_and_grads(
 
     # comput udf for every corner of the grid
     zeros = torch.zeros(coords.shape[0], 4)
-    samples = torch.cat([coords, zeros], dim=-1).cuda()
+    samples = torch.cat([coords, zeros], dim=-1).to(device)
     samples[:, 3], samples[:, 4:] = sample_udf(udf_func, samples[:, :3], max_batch, grad=grad, th_dist=th_dist)
 
     # # compute gradients only where the predicted udf value is small
@@ -366,11 +367,11 @@ def get_mesh_from_udf(
         - Faces of the mesh.
     """
     # th_dist is the threshold udf to consider a point on the surface.
-    th_dist = (1 / N) * 7
+    th_dist = (1 / N)
     # sample udf grid
     if not use_fast_grid_filler:
         udf, gradients = get_udf_and_grads(
-            udf_func, coords_range, max_dist, N, max_batch, grad=grad, th_dist=th_dist
+            udf_func, coords_range, max_dist, N, max_batch, grad=grad, th_dist=th_dist, device=device
         )
     else:
         fast_grid_filler = GridFiller(N)
@@ -502,8 +503,8 @@ def get_mesh_from_udf(
         xyz_s2 = verts - th_dist * normals
         s1, grads = sample_udf(udf_func, xyz_s1, max_batch, grad=False, th_dist=th_dist)
         s2, grads = sample_udf(udf_func, xyz_s2, max_batch, grad=False, th_dist=th_dist)
-        s1 = s1.unsqueeze(-1)
-        s2 = s2.unsqueeze(-1)
+        s1 = s1.unsqueeze(-1).to(device)
+        s2 = s2.unsqueeze(-1).to(device)
         # re-plug differentiability here, by this rewriting trick
         z1 = th_dist * s1 * normals - th_dist * s2 * normals
         z2 = (th_dist * s1 * normals - th_dist * s2 * normals).detach()
@@ -544,12 +545,14 @@ def get_mesh_from_udf(
 
         s1s2 = torch.stack((s1_border, s2_border))
         sign_out_vec = -torch.argmax(s1s2, dim=0) * 2 + 1
+        sign_out_vec = sign_out_vec.to(device)
+        out_vec = out_vec.to(device)
         out_vec = sign_out_vec * out_vec
 
         # filter out the verts borders for which a displacement of out_vec still present
         # a udf < th_dist, i.e. verts classified as borders which are not really so
         mask = ((s1_border + s2_border)[:, 0] > th_dist).detach().cpu().numpy()
-        u_border_filtered = u_border[mask]
+        u_border_filtered = torch.asarray(u_border[mask])
         out_vec_filtered = out_vec[(s1_border + s2_border)[:, 0] > th_dist]
         out_df_filtered = torch.max(s1_border, s2_border)[
             (s1_border + s2_border) > th_dist
@@ -559,8 +562,13 @@ def get_mesh_from_udf(
         s_border = (th_dist * (out_df_filtered - out_df_filtered.detach())).unsqueeze(
             -1
         )
-        new_verts[u_border_filtered] = (
-            new_verts[u_border_filtered] - s_border * out_vec_filtered
+        print('new_verts', type(new_verts))
+        print('u_border_filtered', type(u_border_filtered))
+        print('s_border', type(s_border))
+        print('out_vec_filtered', type(out_vec_filtered))
+        
+        new_verts[u_border_filtered.to(device)] = (
+            new_verts.to(device)[u_border_filtered.to(device)] - s_border.to(device) * out_vec_filtered.to(device)
         )
 
         final_verts = new_verts

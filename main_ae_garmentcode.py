@@ -36,7 +36,7 @@ def get_args_parser():
     parser.add_argument('--point_cloud_size', default=8192*2, type=int,
                         help='input size')
 
-    parser.add_argument('--num_samples', default=16_384*2, type=int,
+    parser.add_argument('--num_samples', default=8192*2, type=int,
                         help='input size')
     
     parser.add_argument('--random_samples_ratio', default=0.2, type=int,
@@ -232,7 +232,7 @@ def main(args):
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
 
-        if epoch % 5 == 0 or epoch + 1 == args.epochs:
+        if False: #epoch % 5 == 0 or epoch + 1 == args.epochs:
             test_stats = evaluate(data_loader_val, model, device, max_dist=args.max_dist)
             print(f"iou of the network on the {len(dataset_val)} test images: {test_stats['iou']:.3f}")
             max_iou = max(max_iou, test_stats["iou"])

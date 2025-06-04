@@ -648,16 +648,23 @@ class KLAutoEncoderV2(nn.Module):
             outputs=udf_grad,
             inputs=queries_grad,
             grad_outputs=grad_outputs,
-            create_graph=False,
-            retain_graph=False,
+            create_graph=True,
+            retain_graph=True,
             only_inputs=True,
             allow_unused=True
         )[0]
         return udf, grads
 
-    def forward(self, pc, queries, with_grads=True):
+    def forward(self, pc, queries, with_grads=True, only_encode=False, only_decode=False):
+        if only_decode:
+            o = self.decode(pc, queries).squeeze(-1)
+            return {'logits': o}
+
+
 
         kl, x = self.encode(pc)
+        if only_encode:
+            return kl, x
         if with_grads:
             o, g = self.decode_with_grad(x, queries)
             o = o.squeeze(-1)
@@ -724,10 +731,16 @@ def ae_garments(N=8192):
 
 # def kl_garments(N=8192):
 #     return create_autoencoder(dim=512, M=512, latent_dim=32, N=N, determinisitc=False)
-# def kl_garments(N=8192):
-#     return create_autoencoder(dim=512, M=512, latent_dim=32, N=N, determinisitc=False)
+
+
+# test cluster
 def kl_garments(N=8192):
     return create_autoencoder(dim=1024, M=2048, latent_dim=32, N=N, determinisitc=False, v2=True)
+
+
+# test local
+# def kl_garments(N=8192):
+#     return create_autoencoder(dim=512, M=2048, latent_dim=16, N=N, determinisitc=False, v2=True)
 
 ###############
 

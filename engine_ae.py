@@ -4,7 +4,7 @@
 # DeiT: https://github.com/facebookresearch/deit
 # BEiT: https://github.com/microsoft/unilm/tree/master/beit
 # --------------------------------------------------------
-
+import os
 import math
 import sys
 from typing import Iterable
@@ -22,27 +22,37 @@ import trimesh
 PLOT = False
 
 if PLOT:
-    fig = plt.figure(figsize=(10, 8))
-    ax1 = fig.add_subplot(141, projection='3d')
+    fig = plt.figure(figsize=(20, 10))
+    ax1 = fig.add_subplot(161, projection='3d')
     ax1.set_xlabel('X')
     ax1.set_ylabel('Y')
     ax1.set_zlabel('Z')
     ax1.legend()
-    ax2 = fig.add_subplot(142, projection='3d')
+    ax2 = fig.add_subplot(162, projection='3d')
     ax2.set_xlabel('X')
     ax2.set_ylabel('Y')
     ax2.set_zlabel('Z')
     ax2.legend()
-    ax3 = fig.add_subplot(143, projection='3d')
+    ax3 = fig.add_subplot(163, projection='3d')
     ax3.set_xlabel('X')
     ax3.set_ylabel('Y')
     ax3.set_zlabel('Z')
     ax3.legend()
-    ax4 = fig.add_subplot(144, projection='3d')
+    ax4 = fig.add_subplot(164, projection='3d')
     ax4.set_xlabel('X')
     ax4.set_ylabel('Y')
     ax4.set_zlabel('Z')
     ax4.legend()
+    ax5 = fig.add_subplot(165, projection='3d')
+    ax5.set_xlabel('X')
+    ax5.set_ylabel('Y')
+    ax5.set_zlabel('Z')
+    ax5.legend()
+    ax6 = fig.add_subplot(166, projection='3d')
+    ax6.set_xlabel('X')
+    ax6.set_ylabel('Y')
+    ax6.set_zlabel('Z')
+    ax6.legend()
 
     plt.title('3D Point Cloud with Labels as Color')
 
@@ -69,11 +79,11 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     n_rnd_pts = int(args.random_samples_ratio * args.num_samples)
     n_sfc_pts = int(args.surface_samples_ratio * args.num_samples)
     n_near_pts = args.num_samples - (n_rnd_pts + n_sfc_pts)
-
+    
     optimizer.zero_grad()
 
-    kl_weight = 1e-5
-    grad_weight = 1e-5
+    kl_weight = 1e-3
+    grad_weight = 1e-4
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
@@ -90,12 +100,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         surface = surface.to(device, non_blocking=True)
         gt_grads = gt_grads.to(device)
 
-        grads_mask = (udf < args.max_dist*0.1).reshape(*gt_grads.shape[:2])
+        grads_mask = torch.bitwise_and(udf < args.max_dist*0.9, udf > 0.001).reshape(*gt_grads.shape[:2])
         
         n_queries = points.shape[1]
 
         with torch.cuda.amp.autocast(enabled=False):
-            outputs = model(surface, points)
+            outputs = model(surface, points, with_grads=True)
 
             # KL loss
             if 'kl' in outputs and outputs['kl'] is not None:
@@ -107,25 +117,51 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             # Gradients loss
             if 'grads' in outputs:
                 grads = outputs['grads']
-                loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=1)).mean()   # cosine distance (sqrt(2*(1-cos_sim)) ~ (1-cos_sim))
+                loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()   # cosine distance (1-cos_sim)
+                # loss_grads = F.mse_loss(F.normalize(grads, dim=-1), F.normalize(gt_grads, dim=-1))
             else:
                 loss_grads = None
 
             # Point-wise Loss
-            outputs = outputs['logits']
+            logits = outputs['logits']
 
-            loss_near = criterion(outputs[:, :n_near_pts], labels[:, :n_near_pts])
-            loss_rand = criterion(outputs[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
-            loss_srf = criterion(outputs[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
+            loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
+            loss_rand = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
+            loss_srf = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
+
+            # if PLOT:
+            #     print('training loop > n_near_pts', n_near_pts, 'n_rnd_pts', n_rnd_pts, 'n_sfc_pts', n_sfc_pts)
+            #     # Get near, random, and surface points
+            #     near_points = points[0, :n_near_pts].cpu().detach().numpy()
+            #     rand_points = points[0, n_near_pts:n_near_pts+n_rnd_pts].cpu().detach().numpy()
+            #     srf_points = points[0, n_near_pts + n_rnd_pts:].cpu().detach().numpy()
+
+            #     ax1.cla()
+            #     ax1.scatter(near_points[:, 0], near_points[:, 1], near_points[:, 2], c='blue', s=1, label='Near Points')
+            #     ax1.set_title('Near Points')
+            #     ax1.legend()
+
+            #     ax2.cla()
+            #     ax2.scatter(rand_points[:, 0], rand_points[:, 1], rand_points[:, 2], c='green', s=1, label='Random Points')
+            #     ax2.set_title('Random Points')
+            #     ax2.legend()
+            #     print(labels[:, n_near_pts:n_near_pts+n_rnd_pts])
+
+            #     ax3.cla()
+            #     ax3.scatter(srf_points[:, 0], srf_points[:, 1], srf_points[:, 2], c='red', s=1, label='Surface Points')
+            #     ax3.set_title('Surface Points')
+            #     ax3.legend()
+            #     plt.draw()
+            #     plt.pause(100)
 
             loss = loss_near + loss_rand + loss_srf
 
-            if epoch % 1 == 0 and data_iter_step == 0:
+            if data_iter_step == 0:
 
                 if PLOT:
                     # Pick 10,000 random points
                     sampled_points = points[0].cpu().detach().numpy()
-                    sampled_labels = outputs[0].detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
+                    sampled_labels = logits[0].detach().cpu().numpy() #torch.sigmoid(logits[0, idxs]).cpu().detach().numpy()
                     # Plot in 3D using labels as color
                     ax1.cla()
                     # ax1 = fig.add_subplot(131, projection='3d')
@@ -147,7 +183,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     #     label='Surface Points'
                     # )
                     sampled_points = points[0].cpu().detach().numpy()
-                    sampled_labels = (outputs[0].flatten() - labels[0].flatten()).abs().detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
+                    sampled_labels = (logits[0].flatten() - labels[0].flatten()).abs().detach().cpu().numpy() #torch.sigmoid(logits[0, idxs]).cpu().detach().numpy()
                     ax2.cla()
                     # ax2 = fig.add_subplot(132, projection='3d')
                     sc2 = ax2.scatter(
@@ -169,7 +205,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     # )
 
                     sampled_points = points[0].cpu().detach().numpy()
-                    sampled_labels = labels[0].detach().cpu().numpy() #torch.sigmoid(outputs[0, idxs]).cpu().detach().numpy()
+                    sampled_labels = labels[0].detach().cpu().numpy() #torch.sigmoid(logits[0, idxs]).cpu().detach().numpy()
                     ax3.cla()
                     # ax3 = fig.add_subplot(133, projection='3d')
                     sc3 = ax3.scatter(
@@ -182,35 +218,180 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     )
                     ax4.cla()
                     # Plot predicted gradients in blue and gt gradients in red
-                    # sampled_points = points[grads_mask].reshape(-1, 3)
-                    # pred_grads = grads[grads_mask].detach().cpu().numpy()
-                    # gt_grads_np = gt_grads[grads_mask].detach().cpu().numpy()
-                    # num_grad_samples = min(1000, sampled_points.shape[0])
-                    # sample_idxs = np.random.choice(sampled_points.shape[0], num_grad_samples, replace=False)
-                    # pred_grads = pred_grads[sample_idxs]
-                    # gt_grads_np = gt_grads_np[sample_idxs]
-                    # sampled_points = sampled_points.cpu().detach().numpy()[sample_idxs]
-                    # # Sample only a subset of the gradients for visualization
 
-                    # ax4.quiver(
-                    #     sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
-                    #     pred_grads[:, 0], pred_grads[:, 1], pred_grads[:, 2],
-                    #     color='blue', length=0.05, normalize=False, label='Predicted Gradients'
-                    # )
-                    # ax4.quiver(
-                    #     sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
-                    #     gt_grads_np[:, 0], gt_grads_np[:, 1], gt_grads_np[:, 2],
-                    #     color='red', length=0.05, normalize=False, label='GT Gradients'
-                    # )
-                    pts = points[grads_mask].detach().cpu().numpy()
-                    
-                    sc4 = ax4.scatter(
-                        pts[:, 0],
-                        pts[:, 1],
-                        pts[:, 2],
-                        c=cos_dist.flatten().detach().cpu().numpy(),
-                        label='Surface Points'
-                    )
+                    if 'grads' in outputs:
+                        sampled_points = points[grads_mask].reshape(-1, 3)
+                        pred_grads = grads[grads_mask].detach().cpu().numpy()
+                        gt_grads_np = gt_grads[grads_mask].detach().cpu().numpy()
+                        gt_udf = labels[grads_mask].detach().cpu().numpy()
+                        pred_udf = logits[grads_mask].detach().cpu().numpy()
+                        cos_dist_vals = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1))
+                        cos_dist_vals_np = cos_dist_vals.detach().cpu().numpy()
+                        sorted_indices = np.argsort(cos_dist_vals_np)
+                        num_grad_samples = min(1000, sampled_points.shape[0])
+                        
+                        lowest_indices = sorted_indices[:num_grad_samples]
+                        highest_indices = sorted_indices[-num_grad_samples:]
+                        sample_idxs = np.random.choice(sampled_points.shape[0], num_grad_samples, replace=False)
+                        # pred_grads = pred_grads[sample_idxs]
+                        # gt_grads_np = gt_grads_np[sample_idxs]
+                        # pred_grads = pred_grads[lowest_indices]
+                        # gt_grads_np = gt_grads_np[lowest_indices]
+                        # pred_grads = pred_grads[highest_indices]
+                        # gt_grads_np = gt_grads_np[highest_indices]
+                        # gt_udf_highest = gt_udf[highest_indices]
+                        # print(gt_udf_highest)
+
+
+                        log_n, lab_n, gt_grad_n = logits[:, :n_near_pts], labels[:, :n_near_pts], gt_grads[:, :n_near_pts]
+                        log_r, lab_r, gt_grad_r = logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts], gt_grads[:, n_near_pts:n_near_pts+n_rnd_pts]
+                        log_s, lab_s, gt_grad_s = logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:], gt_grads[:, n_near_pts:n_near_pts+n_rnd_pts:]
+
+                        # err_n = torch.nn.functional.mse_loss(log_n, lab_n, dim=-1)
+                        # err_r = torch.nn.functional.mse_loss(log_r, lab_r, dim=-1)
+                        # err_s = torch.nn.functional.mse_loss(log_s, lab_s, dim=-1)
+                        err = (logits - labels)[grads_mask].detach().cpu()
+                        # Create a color vector for gt_udf: blue for near, green for rnd, red for srf
+                        color_vec = np.zeros((gt_udf.shape[0], 3))
+                        # Indices for each set
+                        near_idx = np.arange(n_near_pts)
+                        rnd_idx = np.arange(n_near_pts, n_near_pts + n_rnd_pts)
+                        srf_idx = np.arange(n_near_pts + n_rnd_pts, n_near_pts + n_rnd_pts + n_sfc_pts)
+                        # Mask for grads_mask
+                        mask_indices = np.where(grads_mask.detach().cpu().flatten())[0]
+                        # Map set indices to mask_indices
+                        near_mask = np.isin(mask_indices, near_idx)
+                        rnd_mask = np.isin(mask_indices, rnd_idx)
+                        srf_mask = np.isin(mask_indices, srf_idx)
+                        # Assign colors
+                        color_vec[near_mask] = [0, 0, 1]   # blue
+                        color_vec[rnd_mask] = [0, 1, 0]    # green
+                        color_vec[srf_mask] = [1, 0, 0]    # red
+
+                        sampled_points = sampled_points.cpu().detach().numpy() # [highest_indices]
+
+                        # Plot error (cos_dist_vals_np) vs gt_udf_highest as a scatter plot
+                        ax4.set_title("Cosine Distance vs UDF (Surface Proximity)")
+                        ax4.set_xlabel("GT UDF (Distance to Surface)")
+                        ax4.set_ylabel("Cosine Distance (Error)")
+                        # Clear previous 2D plot if any
+                        if hasattr(ax4, '_error_scatter'):
+                            ax4._error_scatter.remove()
+                        ax4._error_scatter = ax4.figure.add_axes([0.7, 0.1, 0.25, 0.25])
+                        ax4._error_scatter.cla()
+
+                        sc4 = ax4._error_scatter.scatter(gt_udf, cos_dist_vals_np, s=2, alpha=0.5, color=color_vec)
+                        # sc4 = ax4._error_scatter.scatter(gt_udf, cos_dist_vals_np, s=2, alpha=0.5, c=err)
+                        ax4._error_scatter.set_xlabel("GT UDF")
+                        ax4._error_scatter.set_ylabel("Cosine Distance")
+                        ax4._error_scatter.set_title("Error vs UDF")
+                        ax4._error_scatter.grid(True)
+
+                        # Plot a central slice of the predicted UDF vs GT UDF
+                        # Assume points are in shape [N, 3], logits and labels are [N]
+                        # We'll plot points where z is close to the median z (central slice)
+                        z_vals = sampled_points[:, 2]
+                        z_center = np.median(z_vals)
+                        slice_thickness = 0.02  # adjust as needed
+                        slice_mask = np.abs(z_vals - z_center) < slice_thickness
+
+                        slice_points = sampled_points[slice_mask]
+                        
+                        slice_pred_udf = pred_udf[slice_mask]
+                        slice_gt_udf = gt_udf[slice_mask]
+
+                        sc_pred = ax5.scatter(slice_points[:, 0], slice_points[:, 1], c=slice_pred_udf, cmap='viridis', s=2)
+                        ax5.set_title('Predicted UDF (central slice)')
+                        ax5.set_xlabel('X')
+                        ax5.set_ylabel('Y')
+
+                        plt.tight_layout()
+
+                        # Plot on ax6 some of the gradients whose error is high
+                        # Select gradients with highest cosine distance (error)
+                        num_grad_samples = min(200, sampled_points.shape[0])
+                        high_error_indices = sorted_indices[-num_grad_samples:]
+
+                        high_error_points = sampled_points[high_error_indices]
+                        high_error_pred_grads = pred_grads[high_error_indices]
+                        high_error_gt_grads = gt_grads_np[high_error_indices]
+                        high_error_vals = cos_dist_vals_np[high_error_indices]
+
+                        ax6.cla()
+                        ax6.set_title('High Error Gradients')
+                        ax6.set_xlabel('X')
+                        ax6.set_ylabel('Y')
+                        ax6.set_zlabel('Z')
+
+                        # Plot points colored by error
+                        sc6 = ax6.scatter(
+                            high_error_points[:, 0],
+                            high_error_points[:, 1],
+                            high_error_points[:, 2],
+                            c=high_error_vals,
+                            cmap='hot',
+                            s=8,
+                            alpha=0.8,
+                            label='High Error Points'
+                        )
+
+                        # Plot predicted gradients in blue
+                        ax6.quiver(
+                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                            high_error_pred_grads[:, 0], high_error_pred_grads[:, 1], high_error_pred_grads[:, 2],
+                            color='blue', length=0.05, normalize=True, label='Predicted'
+                        )
+                        # Plot GT gradients in red
+                        ax6.quiver(
+                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                            high_error_gt_grads[:, 0], high_error_gt_grads[:, 1], high_error_gt_grads[:, 2],
+                            color='red', length=0.05, normalize=True, label='GT'
+                        )
+                        ax6.quiver(
+                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                            high_error_gt_grads[:, 0], high_error_gt_grads[:, 1], high_error_gt_grads[:, 2],
+                            color='red', length=0.05, normalize=True, label='GT'
+                        )
+
+                        surface_points = surface[0].cpu().detach().numpy()
+                        ax6.scatter(
+                            surface_points[:, 0],
+                            surface_points[:, 1],
+                            surface_points[:, 2],
+                            c='red',
+                            label='Surface Points'
+                        )
+                        ax6.scatter(
+                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                            color='blue', label='high_error_points'
+                        )
+                        # ax6.quiver(
+                        #     high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                        #     high_error_gt_grads[:, 0], high_error_gt_grads[:, 1], high_error_gt_grads[:, 2],
+                        #     color='red', length=0.05, normalize=True, label='GT'
+                        # )
+
+                        # Sample only a subset of the gradients for visualization
+
+                        # ax4.quiver(
+                        #     sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
+                        #     pred_grads[:, 0], pred_grads[:, 1], pred_grads[:, 2],
+                        #     color='blue', length=0.05, normalize=True, label='Predicted Gradients'
+                        # )
+                        # ax4.quiver(
+                        #     sampled_points[:, 0], sampled_points[:, 1], sampled_points[:, 2],
+                        #     gt_grads_np[:, 0], gt_grads_np[:, 1], gt_grads_np[:, 2],
+                        #     color='red', length=0.05, normalize=True, label='GT Gradients'
+                        # )
+                        # pts = points[grads_mask].detach().cpu().numpy()
+                        
+                        # sc4 = ax4.scatter(
+                        #     pts[:, 0],
+                        #     pts[:, 1],
+                        #     pts[:, 2],
+                        #     c=cos_dist.flatten().detach().cpu().numpy(),
+                        #     label='Surface Points'
+                        # )
 
                     
                     if epoch == 1 and data_iter_step == 0:
@@ -218,23 +399,26 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         plt.colorbar(sc2, label='Labels')
                         plt.colorbar(sc3, label='Labels')
                         plt.colorbar(sc4, label='Gradient Cos Dist')
+                        plt.colorbar(sc6, ax=ax6, label='Cosine Distance (Error)')
 
                     plt.draw()
                     plt.pause(1.5)
 
-                latent = model.encode(surface[:1])[1]
+                if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+                    model = model.module
+                latent = model(surface[:1], None, only_encode=True)[1]
 
                 def callable_udf_func(x, udf_th):
                     with torch.no_grad():
                         x_nograd = x.clone().detach().to(device).unsqueeze(0)
-                        udf = model.decode(latent.detach(), x_nograd).flatten()
+                        udf = model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten()
 
                     grad = torch.zeros_like(x, device=x.device)
                     mask = udf < udf_th
 
                     if mask.sum() > 0:
                         x_grad = x[mask].clone().detach().requires_grad_(True).unsqueeze(0)
-                        udf_grad = model.decode(latent.detach(), x_grad).flatten()
+                        udf_grad = model(latent.detach(), x_grad, only_decode=True)['logits'].flatten()
                         grad_outputs = torch.ones_like(udf_grad)
                         grads = torch.autograd.grad(
                             outputs=udf_grad,
@@ -257,11 +441,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                             N=256,
                             use_fast_grid_filler=False,
                             th_alpha=1.05,
-                            th_beta=1.75
+                            th_beta=1.75,
+                            device=device
                         )
 
                         mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
-                        mesh.export(f'mesh_output/final_{epoch}_{data_iter_step}.obj', file_type='obj')
+                        mesh.export(f'mesh_output_sphere_2/final_{epoch}_{data_iter_step}.obj', file_type='obj')
                         print(f"Mesh exported at mesh_output/final_{epoch}_{data_iter_step}.obj")
                     except Exception as e:
                         print(e)
@@ -275,8 +460,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         threshold = 0.5
 
-        pred = torch.zeros_like(outputs)
-        pred[torch.sigmoid(outputs)>=threshold] = 1
+        pred = torch.zeros_like(logits)
+        pred[torch.sigmoid(logits)>=threshold] = 1
 
         intersection = (pred * labels).sum(dim=1)
         union = (pred + labels).gt(0).sum(dim=1) + 1e-5
