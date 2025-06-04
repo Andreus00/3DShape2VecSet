@@ -39,13 +39,18 @@ def build_shape_surface_occupancy_dataset(split, args):
 
 
 def load_garmentcodedata(split, args):
+    replica = 1
+    if  args.test_dummy_sphere:
+        replica = 1024
+
+
     if split == 'training':
-        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, sampling=True, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, num_samples=args.num_samples, max_dist=args.max_dist, random_samples_ratio=args.random_samples_ratio, surface_samples_ratio=args.surface_samples_ratio)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, sampling=True, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, num_samples=args.num_samples, max_dist=args.max_dist, random_samples_ratio=args.random_samples_ratio, surface_samples_ratio=args.surface_samples_ratio, test_dummy_sphere=args.test_dummy_sphere, replica=replica)
     elif split == 'validation':
         # return ShapeNet(args.data_path, split=split, transform=None, sampling=True, num_samples=1024, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist)
-        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist, random_samples_ratio=args.random_samples_ratio, surface_samples_ratio=args.surface_samples_ratio)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist, random_samples_ratio=args.random_samples_ratio, surface_samples_ratio=args.surface_samples_ratio, test_dummy_sphere=args.test_dummy_sphere, replica=replica)
     else:
-        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist, random_samples_ratio=args.random_samples_ratio, surface_samples_ratio=args.surface_samples_ratio)
+        return GarmentCode(args.data_path, force_occupancy=args.force_occupancy, split=split, transform=None, sampling=False, return_surface=True, surface_sampling=True, pc_size=args.point_cloud_size, max_dist=args.max_dist, random_samples_ratio=args.random_samples_ratio, surface_samples_ratio=args.surface_samples_ratio, test_dummy_sphere=args.test_dummy_sphere, replica=replica)
 
 
 if __name__ == '__main__':

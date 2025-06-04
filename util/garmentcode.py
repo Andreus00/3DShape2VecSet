@@ -161,7 +161,7 @@ def importance_sampling(mesh, n_points=10_000, device="cuda"):
     return points, grads
 
 
-def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha):
+def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha, test_dummy_sphere):
     """Processes a single garment on a specific GPU."""
 
     subpath, gpu_id = args
@@ -199,17 +199,18 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
         # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
         # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
         mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
-        mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
+        if test_dummy_sphere:
+            mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
         b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
         shifts = (b_max + b_min) / 2
         mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
-        scale = (1 / np.abs(b_max - b_min).max()) * 1.9
+        scale = (1 / np.abs(b_max - b_min).max()) * 1.75
         mesh_trimesh = mesh_trimesh.apply_scale(scale)
 
         # Check that scale is close to 1 and shifts are close to the origin
         b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
         shifts = (b_max + b_min) / 2
-        scale = (1 / np.abs(b_max - b_min).max()) * 1.9
+        scale = (1 / np.abs(b_max - b_min).max()) * 1.75
         if not (0.99 <= scale <= 1.01):
             print(f"Warning: Normalization Failed. Scale is not close to 1 (scale={scale}) for {model_file}")
         if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
@@ -264,7 +265,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1024, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -292,6 +293,8 @@ class GarmentCode(data.Dataset):
                 garments = [sample.replace("default_body", "default_body/data") for sample in train_test_val_split[split] if "default_body" in sample]
             # Build full paths
             self.mesh_folders = [os.path.join(dataset_folder, "GarmentCodeData_v2", garment) for garment in garments]
+            if test_dummy_sphere:
+                self.mesh_folders = self.mesh_folders[:1]
         else:
             garments_path = os.path.join(dataset_folder, "GarmentCodeData_v2", "garments_5000_0", "default_body", "data")
             self.mesh_folders = [os.path.join(garments_path, el) for el in os.listdir(garments_path)]
@@ -322,7 +325,8 @@ class GarmentCode(data.Dataset):
                         mean_body_mean=self.mean_body_mean,
                         force_occupancy=self.force_occupancy,
                         max_dist=self.max_dist,
-                        body_model_normalization_alpha=self.body_model_normalization_alpha
+                        body_model_normalization_alpha=self.body_model_normalization_alpha,
+                        test_dummy_sphere=test_dummy_sphere
                     ),
                     [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
                 ),

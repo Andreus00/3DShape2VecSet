@@ -103,6 +103,9 @@ def get_args_parser():
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
 
 
+    parser.add_argument('--test_dummy_sphere', action='store_true', help='Replace training and testing data with a sphere')
+    
+
     parser.add_argument('--body_model_normalization', action='store_true', help='Use body model normalization')
     parser.add_argument('--body_model_normalization_alpha', type=float, default=0.5, help='Body model normalization value used to scale the body model')
 
