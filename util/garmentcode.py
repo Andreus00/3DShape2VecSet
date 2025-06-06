@@ -120,6 +120,7 @@ def get_boundary_points(mesh_trimesh, numpts=8192):
     edge_pts = np.concatenate(edge_pts, axis=0)
     if edge_pts.shape[0] > numpts:
         edge_pts = edge_pts[np.random.permutation(edge_pts.shape[0])][:numpts]
+    return edge_pts
 
 
 data_keys = {
@@ -156,67 +157,84 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
     body_info_path = os.path.join(subpath, f"{g}_body_measurements.yaml")
     
     udf_path = os.path.join(subpath, f"{g}_udf.npz")
+    
+    if os.path.exists(udf_path) and not force_occupancy:    # If the file exist, check its validity and return it if the check passes.
+        try:
+            npz_data = None
+            with np.load(udf_path, allow_pickle=True) as data:
+                if all(key in data for key in data_keys):
+                    return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
+                elif all(key in data for key in (data_keys - {'boundary'})):
+                    # Only 'boundary' is missing, so compute and add it
+                    mesh_trimesh = tri.load(str(model_file))
+                    scaling = 1.5
+                    if test_dummy_sphere:
+                        mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
+                    b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
+                    shifts = (b_max + b_min) / 2
+                    mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
+                    scale = (1 / np.abs(b_max - b_min).max()) * scaling
+                    mesh_trimesh = mesh_trimesh.apply_scale(scale)
+                    boundary = get_boundary_points(mesh_trimesh, numpts=8192)
+                    npz_data = dict(data)
+                    npz_data["boundary"] = boundary
+            if npz_data is not None:
+                # Save the new file with boundary added
+                np.savez(
+                    udf_path,
+                    boundary=npz_data["boundary"],
+                    surface=npz_data["surface"],
+                    surface_grads=npz_data["surface_grads"],
+                    importance_points=npz_data["importance_points"],
+                    importance_grad=npz_data["importance_grad"],
+                    points_near=npz_data["points_near"],
+                    points_rand=npz_data["points_rand"],
+                    udf_near=npz_data["udf_near"],
+                    udf_rand=npz_data["udf_rand"],
+                    gradients_near=npz_data["gradients_near"],
+                    gradients_rand=npz_data["gradients_rand"]
+                    
+                )
+                return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
+        except BadZipFile as e:
+            print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
+            os.remove(udf_path)
 
-    if not os.path.exists(udf_path) or force_occupancy:
-        if os.path.exists(udf_path) and not force_occupancy:
-            try:
-                with np.load(udf_path) as data:
-                    if all(key in data for key in data_keys):
-                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
-                    elif all(key in data for key in (data_keys - {'boundary'})):
-                        # Only 'boundary' is missing, so compute and add it
-                        mesh_trimesh = tri.load(str(model_file))
-                        scaling = 1.5
-                        if test_dummy_sphere:
-                            mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
-                        b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
-                        shifts = (b_max + b_min) / 2
-                        mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
-                        scale = (1 / np.abs(b_max - b_min).max()) * scaling
-                        mesh_trimesh = mesh_trimesh.apply_scale(scale)
-                        boundary = get_boundary_points(mesh_trimesh, numpts=8192)
-                        # Save the new file with boundary added
-                        data['boundary'] = boundary
-                        np.savez(udf_path, **data)
-                        return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
-            except BadZipFile as e:
-                print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
-                os.remove(udf_path)
 
+    # mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
+    # shifts = (mesh_o3d.get_max_bound() + mesh_o3d.get_min_bound()) / 2
+    # mesh_o3d.translate((-shifts[0], -shifts[1], -shifts[2]))
+    # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
+    # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
+    mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
+    scaling = 1.5
+    if test_dummy_sphere:
+        mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
+    b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
+    shifts = (b_max + b_min) / 2
+    mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
+    scale = (1 / np.abs(b_max - b_min).max()) * scaling
+    mesh_trimesh = mesh_trimesh.apply_scale(scale)
 
-        # mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
-        # shifts = (mesh_o3d.get_max_bound() + mesh_o3d.get_min_bound()) / 2
-        # mesh_o3d.translate((-shifts[0], -shifts[1], -shifts[2]))
-        # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
-        # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
-        mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
-        scaling = 1.5
-        if test_dummy_sphere:
-            mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
-        b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
-        shifts = (b_max + b_min) / 2
-        mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
-        scale = (1 / np.abs(b_max - b_min).max()) * scaling
-        mesh_trimesh = mesh_trimesh.apply_scale(scale)
+    b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
+    shifts = (b_max + b_min) / 2
+    scale = (1 / np.abs(b_max - b_min).max()) * scaling
+    if not (0.99 <= scale <= 1.01):
+        print(f"Warning: Normalization Failed. Scale is not close to 1 (scale={scale}) for {model_file}")
+    if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
+        print(f"Warning: Normalization Failed. shifts are not close to origin (shifts={shifts}) for {model_file}")
 
-        shifts = (b_max + b_min) / 2
-        scale = (1 / np.abs(b_max - b_min).max()) * scaling
-        if not (0.99 <= scale <= 1.01):
-            print(f"Warning: Normalization Failed. Scale is not close to 1 (scale={scale}) for {model_file}")
-        if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
-            print(f"Warning: Normalization Failed. shifts are not close to origin (shifts={shifts}) for {model_file}")
+    surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
 
-        surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
+    boundary = get_boundary_points(mesh_trimesh, numpts=8192)
 
-        boundary = get_boundary_points(mesh_trimesh, numpts=8192)
+    importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
 
-        importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
+    np.savez(udf_path, boundary=boundary, surface=surface, surface_grads=surface_grads, importance_points=importance_points.detach().cpu(), importance_grad=importance_grad.detach().cpu(), points_near=points_near, \
+                points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \
+                gradients_rand=gradients_rand)
 
-        np.savez(udf_path, boundary=boundary, surface=surface, surface_grads=surface_grads, importance_points=importance_points.detach().cpu(), importance_grad=importance_grad.detach().cpu(), points_near=points_near, \
-                 points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \
-                    gradients_rand=gradients_rand)
-
-        del boundary, surface, surface_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand
+    del boundary, surface, surface_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand
 
     return {
         'model': model_file,

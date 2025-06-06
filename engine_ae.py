@@ -156,7 +156,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
             loss = loss_near + loss_rand + loss_srf
 
-            if data_iter_step == 0:
+            if data_iter_step == 0 and False:
 
                 if PLOT:
                     # Pick 10,000 random points
