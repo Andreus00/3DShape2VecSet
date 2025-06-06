@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name="vs"
-#SBATCH --partition=h100-ferranti
+#SBATCH --partition=a100-galvani
 #SBATCH --time=9:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=64G    # Request more memory
+#SBATCH --mem=32G    # Request more memory
 #SBATCH --cpus-per-task=8   # Request more CPUs
 
 
