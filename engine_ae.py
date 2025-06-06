@@ -446,8 +446,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         )
 
                         mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
-                        mesh.export(f'mesh_output_sphere_2/final_{epoch}_{data_iter_step}.obj', file_type='obj')
-                        print(f"Mesh exported at mesh_output/final_{epoch}_{data_iter_step}.obj")
+                        p = f'{args.output_dir}/final_{epoch}_{data_iter_step}.obj'
+                        mesh.export(p, file_type='obj')
+                        print(f"Mesh exported at {p}")
                     except Exception as e:
                         print(e)
 
