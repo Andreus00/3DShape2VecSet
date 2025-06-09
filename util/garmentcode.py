@@ -352,7 +352,7 @@ class GarmentCode(data.Dataset):
                     ),
                     [(el, i % world_size) for i, el in enumerate(self.mesh_folders[start:])]
                 ),
-                total=len(self.mesh_folders)
+                total=(len(self.mesh_folders) - start)
             ))
 
         # Store processed results
