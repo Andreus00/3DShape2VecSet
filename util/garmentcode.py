@@ -122,6 +122,43 @@ def get_boundary_points(mesh_trimesh, numpts=8192):
         edge_pts = edge_pts[np.random.permutation(edge_pts.shape[0])][:numpts]
     return edge_pts
 
+def get_boundary_points_torch(mesh_trimesh, numpts=8192, device='cuda'):
+    # Move to GPU if available
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
+
+    # Find boundary edges
+    edges = mesh_trimesh.edges[tri.grouping.group_rows(mesh_trimesh.edges_sorted, require_count=1)]
+    n_edges = len(edges)
+    if n_edges == 0:
+        return torch.empty((0, 3), device=device).cpu().numpy()
+
+    # Determine number of samples per edge
+    n_edge_samples = max(2, int(np.ceil(numpts / n_edges)))
+
+    # Convert vertices to torch
+    vertices = torch.tensor(mesh_trimesh.vertices, dtype=torch.float32, device=device)
+    edges_torch = torch.tensor(edges, dtype=torch.long, device=device)
+
+    # Collect interpolated points per edge
+    v0 = vertices[edges_torch[:, 0]]  # shape: (n_edges, 3)
+    v1 = vertices[edges_torch[:, 1]]  # shape: (n_edges, 3)
+
+    t = torch.linspace(0, 1, steps=n_edge_samples, device=device).view(1, -1, 1)  # shape: (1, n_samples, 1)
+
+    # Broadcast interpolation: (n_edges, n_samples, 3)
+    v0_exp = v0.unsqueeze(1)  # (n_edges, 1, 3)
+    v1_exp = v1.unsqueeze(1)
+    pts = (1 - t) * v0_exp + t * v1_exp
+
+    # Reshape to (n_edges * n_samples, 3)
+    edge_pts = pts.reshape(-1, 3)
+
+    # Random sampling if oversampled
+    if edge_pts.shape[0] > numpts:
+        idx = torch.randperm(edge_pts.shape[0], device=device)[:numpts]
+        edge_pts = edge_pts[idx]
+
+    return edge_pts.cpu().numpy()
 
 data_keys = {
     "boundary",
@@ -226,7 +263,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
     surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
 
-    boundary = get_boundary_points(mesh_trimesh, numpts=8192)
+    boundary = get_boundary_points_torch(mesh_trimesh, numpts=8192)
 
     importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
 
