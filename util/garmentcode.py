@@ -336,6 +336,8 @@ class GarmentCode(data.Dataset):
         else:
             world_size = min(16, os.cpu_count())
         processing_func = process_garment_worker_meshbox_norm
+
+        start = 54000 if split == 'training' else 0
         
         with mp.get_context("spawn").Pool(processes=world_size) as pool:
             results = list(tqdm.tqdm(
@@ -348,7 +350,7 @@ class GarmentCode(data.Dataset):
                         body_model_normalization_alpha=self.body_model_normalization_alpha,
                         test_dummy_sphere=test_dummy_sphere
                     ),
-                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
+                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders[start:])]
                 ),
                 total=len(self.mesh_folders)
             ))
