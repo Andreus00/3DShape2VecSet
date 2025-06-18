@@ -2,16 +2,16 @@
 
 # Sample Slurm job script for Galvani 
 
-#SBATCH -J garment-encoder                # Job name
+#SBATCH -J ge-1                # Job name
 #SBATCH --ntasks=1                 # Number of tasks
-#SBATCH --cpus-per-task=8          # Number of CPU cores per task
+#SBATCH --cpus-per-task=4          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
-#SBATCH --partition=2080-galvani   # Which partition will run your job
-#SBATCH --time=2-00:00             # Allowed runtime in D-HH:MM
+#SBATCH --partition=a100-galvani   # Which partition will run your job
+#SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
-#SBATCH --gres=gpu:4
-#SBATCH --output=./logs_sphere/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
-#SBATCH --error=./logs_sphere/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
+#SBATCH --gres=gpu:8
+#SBATCH --output=./logs_ge_1/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
+#SBATCH --error=./logs_ge_1/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=andrea.sanchietti@uni-tuebingen.de   # Email to which notifications will be sent
 
@@ -29,6 +29,6 @@ source ~/.bashrc
 conda activate shape2vec
 # Compute Phase
 # srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
-srun env -u SLURM_PROCID python3 -m torch.distributed.launch --rdzv_endpoint=localhost:29401 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --output_dir ./output_sphere --log_dir ./output_sphere --device cuda --batch_size 1 --accum_iter 32 --max_dist 0.1 --lr 0.0001 --save_every 1 --epochs 500 --test_dummy_sphere --force_occupancy --warmup_epochs 0
+srun env -u SLURM_PROCID python3 -m torch.distributed.launch main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --device cuda --batch_size 2 --accum_iter 4 --max_dist 0.1 --lr 0.00001 --save_every 1 --epochs 800 --output_dir output_v1 --log_dir output_v1 --start_epoch 8 --resume output_v1/checkpoint-7.pth
 
 conda deactivate
