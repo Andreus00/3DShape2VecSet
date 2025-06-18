@@ -264,6 +264,9 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
     surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
 
     boundary = get_boundary_points_torch(mesh_trimesh, numpts=8192)
+    if len(boundary) == 0:
+        print("NO BOUNDARY FOUND")
+        boundary = surface[np.random.permutation(surface.shape[0])[:8192]]
 
     importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
 
@@ -337,8 +340,6 @@ class GarmentCode(data.Dataset):
             world_size = min(16, os.cpu_count())
         processing_func = process_garment_worker_meshbox_norm
 
-        start = 54000 if split == 'training' else 0
-        
         with mp.get_context("spawn").Pool(processes=world_size) as pool:
             results = list(tqdm.tqdm(
                 pool.imap_unordered(
@@ -350,7 +351,7 @@ class GarmentCode(data.Dataset):
                         body_model_normalization_alpha=self.body_model_normalization_alpha,
                         test_dummy_sphere=test_dummy_sphere
                     ),
-                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders[start:])]
+                    [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
                 ),
                 total=(len(self.mesh_folders) - start)
             ))

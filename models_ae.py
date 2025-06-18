@@ -574,29 +574,39 @@ class KLAutoEncoderV2(nn.Module):
         # pc: B x N x 3
         B, N, D = pc.shape
         assert N == self.num_inputs
+        n_surf_bnd_pts = N // 4
+        n_surf_imp_pts = N // 4
+        n_surf_rnd_pts = N - (n_surf_bnd_pts + n_surf_imp_pts)
         
         ###### separate fps for random and importance points
-        flattened_rnd = pc[:, :N//2, :]
-        flattened_imp = pc[:, N//2:, :]
-        flattened_rnd = flattened_rnd.reshape(B*(N//2), D)
-        flattened_imp = flattened_imp.reshape(B*(N//2), D)
+        flattened_rnd = pc[:, :n_surf_rnd_pts, :]
+        flattened_imp = pc[:, n_surf_rnd_pts:n_surf_rnd_pts+n_surf_imp_pts, :]
+        flattened_bnd = pc[:, n_surf_rnd_pts+n_surf_imp_pts:, :]
+        flattened_rnd = flattened_rnd.reshape(B*(n_surf_rnd_pts), D)
+        flattened_imp = flattened_imp.reshape(B*(n_surf_imp_pts), D)
+        flattened_bnd = flattened_bnd.reshape(B*(n_surf_bnd_pts), D)
 
         batch = torch.arange(B).to(pc.device)
-        batch_rnd = torch.repeat_interleave(batch, N//2)
-        batch_imp = torch.repeat_interleave(batch, N//2)
+        batch_rnd = torch.repeat_interleave(batch, n_surf_rnd_pts)
+        batch_imp = torch.repeat_interleave(batch, n_surf_imp_pts)
+        batch_bnd = torch.repeat_interleave(batch, n_surf_bnd_pts)
 
         pos_rnd = flattened_rnd
         pos_imp = flattened_imp
+        pos_bnd = flattened_bnd
 
         ratio = 1.0 * self.num_latents / self.num_inputs
 
         idx_rnd = fps(pos_rnd, batch_rnd, ratio=ratio)
         idx_imp = fps(pos_imp, batch_imp, ratio=ratio)
+        idx_bnd = fps(pos_bnd, batch_bnd, ratio=ratio)
 
-        sampled_pc_rnd = pos_rnd[idx_rnd]
-        sampled_pc_imp = pos_imp[idx_imp]
-        
-        sampled_pc = torch.cat([sampled_pc_rnd, sampled_pc_imp], dim=1).view(B, -1, 3)
+
+        sampled_pc_rnd = pos_rnd[idx_rnd].reshape(B, -1, 3)
+        sampled_pc_imp = pos_imp[idx_imp].reshape(B, -1, 3)
+        sampled_pc_bnd = pos_bnd[idx_bnd].reshape(B, -1, 3)
+#        print(sampled_pc_rnd.shape, sampled_pc_bnd.shape,sampled_pc_imp.shape)
+        sampled_pc = torch.cat([sampled_pc_rnd, sampled_pc_imp, sampled_pc_bnd], dim=1).view(B, -1, 3)
         ######
 
         sampled_pc_embeddings = self.point_embed(sampled_pc)
@@ -735,7 +745,7 @@ def ae_garments(N=8192):
 
 # test cluster
 def kl_garments(N=8192):
-    return create_autoencoder(dim=1024, M=2048, latent_dim=32, N=N, determinisitc=False, v2=True)
+    return create_autoencoder(dim=512, M=512, latent_dim=16, N=N, determinisitc=False, v2=True)
 
 
 # test local

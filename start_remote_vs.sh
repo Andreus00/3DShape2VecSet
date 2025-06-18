@@ -3,9 +3,9 @@
 #SBATCH --ntasks=1                 # Number of tasks
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
 #SBATCH --partition=a100-galvani
-#SBATCH --time=0-9:00
+#SBATCH --time=0-01:00
 #SBATCH --gres=gpu:2
-#SBATCH --mem=32G    # Request more memory
+#SBATCH --mem=16G    # Request more memory
 #SBATCH --cpus-per-task=8   # Request more CPUs
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=andrea.sanchietti@uni-tuebingen.de   # Email to which notifications will be sent

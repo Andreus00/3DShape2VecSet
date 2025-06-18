@@ -82,8 +82,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     
     optimizer.zero_grad()
 
-    kl_weight = 1e-3
-    grad_weight = 1e-4
+    kl_weight = 1e-2
+    grad_weight = 1e-2
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
@@ -96,7 +96,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         points = points.to(device, non_blocking=True)
         udf = udf.to(device, non_blocking=True)
-        labels = torch.clip(udf, 0, args.max_dist)
+        labels = (torch.clip(udf, 0, args.max_dist) / args.max_dist)
         surface = surface.to(device, non_blocking=True)
         gt_grads = gt_grads.to(device)
 
@@ -118,6 +118,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             if 'grads' in outputs:
                 grads = outputs['grads']
                 loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()   # cosine distance (1-cos_sim)
+#                loss_grads += 0.01 * (1 - torch.linalg.norm(grads[grads_mask], dim=-1)).mean()
                 # loss_grads = F.mse_loss(F.normalize(grads, dim=-1), F.normalize(gt_grads, dim=-1))
             else:
                 loss_grads = None
@@ -156,7 +157,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
             loss = loss_near + loss_rand + loss_srf
 
-            if data_iter_step == 0 and False:
+            if data_iter_step == 0:
 
                 if PLOT:
                     # Pick 10,000 random points
@@ -411,7 +412,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 def callable_udf_func(x, udf_th):
                     with torch.no_grad():
                         x_nograd = x.clone().detach().to(device).unsqueeze(0)
-                        udf = model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten()
+                        udf = torch.nn.functional.sigmoid(model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten()) * args.max_dist
 
                     grad = torch.zeros_like(x, device=x.device)
                     mask = udf < udf_th
@@ -433,12 +434,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     return udf, -grad.detach()
                 
                 if epoch > 1:
-                    try:
+#                    try:
                         verts, faces = get_mesh_from_udf(
                             udf_func=callable_udf_func,
                             coords_range=(-1, 1),
                             max_dist=0.1,
-                            N=256,
+                            N=128,
                             use_fast_grid_filler=False,
                             th_alpha=1.05,
                             th_beta=1.75,
@@ -449,8 +450,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         p = f'{args.output_dir}/final_{epoch}_{data_iter_step}.obj'
                         mesh.export(p, file_type='obj')
                         print(f"Mesh exported at {p}")
-                    except Exception as e:
-                        print(e)
+#                    except Exception as e:
+#                        print(e)
 
             if loss_kl is not None:
                 loss = loss + kl_weight * loss_kl

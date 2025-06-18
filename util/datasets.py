@@ -41,7 +41,7 @@ def build_shape_surface_occupancy_dataset(split, args):
 def load_garmentcodedata(split, args):
     replica = 1
     if  args.test_dummy_sphere:
-        replica = 1024
+        replica = 50000
 
 
     if split == 'training':
