@@ -403,6 +403,18 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         torch.cuda.synchronize()
 
+        # Log batch losses to wandb
+        logging_dict["batch/loss"] = loss_value
+        logging_dict["batch/loss_near"] = loss_near.item()
+        logging_dict["batch/loss_rand"] = loss_rand.item()
+        logging_dict["batch/loss_srf"] = loss_srf.item()
+        if loss_kl is not None:
+            logging_dict["batch/loss_kl"] = loss_kl.item()
+        if loss_grads is not None:
+            logging_dict["batch/loss_grads"] = loss_grads.item()
+        logging_dict["batch/iou"] = iou.item()
+        wandb.log(logging_dict)
+
         metric_logger.update(loss=loss_value)
 
         metric_logger.update(loss_near=loss_near.item())
@@ -437,8 +449,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
-    logging_dict.update({k:v.global_avg for k, v in metric_logger.meters.items()})
-    wandb.log(logging_dict)
+    logging_dict.update({f"epoch/{k}":v.global_avg for k, v in metric_logger.meters.items()})
+    wandb.log(logging_dict, step=epoch)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
