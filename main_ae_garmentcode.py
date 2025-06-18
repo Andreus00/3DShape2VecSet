@@ -21,6 +21,8 @@ import models_ae
 
 from engine_ae import train_one_epoch, evaluate
 
+import wandb
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Autoencoder', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
@@ -36,7 +38,7 @@ def get_args_parser():
     parser.add_argument('--point_cloud_size', default=8192*2, type=int,
                         help='input size')
 
-    parser.add_argument('--num_samples', default=8192*2, type=int,
+    parser.add_argument('--num_samples', default=8192*8, type=int,
                         help='input size')
     
     parser.add_argument('--random_samples_ratio', default=0.2, type=int,
@@ -101,9 +103,11 @@ def get_args_parser():
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--save_every', default=50, type=int, help='Saving iterval')
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
+    parser.add_argument('--mse_loss', action='store_true', help='Use MSE loss instead of BCEWithLogitsLoss')
 
 
     parser.add_argument('--test_dummy_sphere', action='store_true', help='Replace training and testing data with a sphere')
+    parser.add_argument('--single_garment_overfit', action='store_true', help='Replace training and testing data with the first garment in the dataset')
     
 
     parser.add_argument('--body_model_normalization', action='store_true', help='Use body model normalization')
@@ -112,6 +116,7 @@ def get_args_parser():
     return parser
 
 def main(args):
+
     misc.init_distributed_mode(args)
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
@@ -132,7 +137,7 @@ def main(args):
     if args.only_udf:
         exit(0)
 
-    if True:  # args.distributed:
+    if args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         sampler_train = torch.utils.data.DistributedSampler(
@@ -149,6 +154,7 @@ def main(args):
         else:
             sampler_val = torch.utils.data.SequentialSampler(dataset_val)
     else:
+        global_rank = 0
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
         sampler_val = torch.utils.data.SequentialSampler(dataset_val)
 
@@ -206,7 +212,10 @@ def main(args):
     optimizer = torch.optim.AdamW(model_without_ddp.parameters(), lr=args.lr)
     loss_scaler = NativeScaler()
 
-    criterion = torch.nn.BCEWithLogitsLoss() # torch.nn.MSELoss()
+    if args.mse_loss:
+        criterion = torch.nn.MSELoss()
+    else:
+        criterion = torch.nn.BCEWithLogitsLoss()
 
     print("criterion = %s" % str(criterion))
 
@@ -220,6 +229,14 @@ def main(args):
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     max_iou = 0.0
+    
+    test_type = 'sphere' if args.test_dummy_sphere else 'single_garment' if args.single_garment_overfit else 'full_dataset'
+    distrubuted_type = 'distributed' if args.distributed else 'single_gpu'
+    criterion_type = 'mse' if args.mse_loss else 'bce'
+
+    project_name = f"3DShape2VecSet_{test_type}_{distrubuted_type}_{criterion_type}"
+    wandb.init(project=project_name, name=args.model, config=args)
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)

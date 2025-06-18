@@ -284,7 +284,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -316,7 +316,7 @@ class GarmentCode(data.Dataset):
                 garments = [sample.replace("default_body", "default_body/data") for sample in train_test_val_split[split] if "default_body" in sample]
             # Build full paths
             self.mesh_folders = [os.path.join(dataset_folder, "GarmentCodeData_v2", garment) for garment in garments]
-            if test_dummy_sphere:
+            if test_dummy_sphere or single_garment_overfit:
                 self.mesh_folders = self.mesh_folders[:1]
         else:
             garments_path = os.path.join(dataset_folder, "GarmentCodeData_v2", "garments_5000_0", "default_body", "data")
@@ -325,7 +325,9 @@ class GarmentCode(data.Dataset):
             if self.split == "training":
                 self.mesh_folders = self.mesh_folders[:split_idx]
             elif self.split == "validation":
-                self.mesh_folders = self.mesh_folders[:split_idx]
+                self.mesh_folders = self.mesh_folders[split_idx:]
+            if test_dummy_sphere or single_garment_overfit:
+                self.mesh_folders = self.mesh_folders[:1]
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
@@ -353,7 +355,7 @@ class GarmentCode(data.Dataset):
                     ),
                     [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
                 ),
-                total=(len(self.mesh_folders) - start)
+                total=(len(self.mesh_folders))
             ))
 
         # Store processed results
