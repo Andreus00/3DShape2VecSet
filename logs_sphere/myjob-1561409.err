@@ -1,0 +1,129 @@
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py:208: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use-env is set by default in torchrun.
+If your script expects `--local-rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  main()
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+[rank0]:[W620 11:02:52.818109734 ProcessGroupNCCL.cpp:4115] [PG ID 0 PG GUID 0 Rank 0]  using GPU 0 to perform barrier as devices used by this process are currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect.Specify device_ids in barrier() to force use of a particular device,or call init_process_group() with a device_id.
+  0%|          | 0/1 [00:00<?, ?it/s]/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/util/garmentcode.py:92: UserWarning: Using torch.cross without specifying the dim arg is deprecated.
+Please either pass the dim explicitly or simply use torch.linalg.cross.
+The default value of dim will change to agree with that of linalg.cross in a future release. (Triggered internally at /opt/conda/conda-bld/pytorch_1729647350383/work/aten/src/ATen/native/Cross.cpp:62.)
+  grads = torch.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
+100%|██████████| 1/1 [00:16<00:00, 16.05s/it]100%|██████████| 1/1 [00:16<00:00, 16.05s/it]
+  0%|          | 0/1 [00:00<?, ?it/s]/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/util/garmentcode.py:92: UserWarning: Using torch.cross without specifying the dim arg is deprecated.
+Please either pass the dim explicitly or simply use torch.linalg.cross.
+The default value of dim will change to agree with that of linalg.cross in a future release. (Triggered internally at /opt/conda/conda-bld/pytorch_1729647350383/work/aten/src/ATen/native/Cross.cpp:62.)
+  grads = torch.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
+100%|██████████| 1/1 [00:16<00:00, 16.66s/it]100%|██████████| 1/1 [00:16<00:00, 16.66s/it]
+/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/util/misc.py:254: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  self._scaler = torch.cuda.amp.GradScaler()
+wandb: Currently logged in as: andr3us (SewingGaussians) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.20.1
+wandb: Run data is saved locally in /mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/wandb/run-20250620_110327-cg1z713a
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run kl_garments
+wandb: ⭐️ View project at https://wandb.ai/SewingGaussians/3DShape2VecSet_single_garment_distributed_bce
+wandb: 🚀 View run at https://wandb.ai/SewingGaussians/3DShape2VecSet_single_garment_distributed_bce/runs/cg1z713a
+/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/engine_ae.py:116: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/autograd/graph.py:825: UserWarning: Attempting to run cuBLAS, but there was no current CUDA context! Attempting to set the primary context... (Triggered internally at /opt/conda/conda-bld/pytorch_1729647350383/work/aten/src/ATen/cuda/CublasHandlePool.cpp:135.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+Traceback (most recent call last):
+  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/main_ae_garmentcode.py", line 289, in <module>
+    main(args)
+  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/main_ae_garmentcode.py", line 243, in main
+    train_stats = train_one_epoch(
+  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/engine_ae.py", line 117, in train_one_epoch
+    outputs = model(surface, points, with_grads=True)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/models_ae.py", line 679, in forward
+    o, g = self.decode_with_grad(x, queries)
+  File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/models_ae.py", line 657, in decode_with_grad
+    grads = torch.autograd.grad(
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/autograd/__init__.py", line 496, in grad
+    result = _engine_run_backward(
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/autograd/graph.py", line 825, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 256.00 MiB. GPU 0 has a total capacity of 10.75 GiB of which 133.62 MiB is free. Including non-PyTorch memory, this process has 10.62 GiB memory in use. Of the allocated memory 10.14 GiB is allocated by PyTorch, and 162.99 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/main_ae_garmentcode.py", line 289, in <module>
+[rank0]:     main(args)
+[rank0]:   File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/main_ae_garmentcode.py", line 243, in main
+[rank0]:     train_stats = train_one_epoch(
+[rank0]:   File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/engine_ae.py", line 117, in train_one_epoch
+[rank0]:     outputs = model(surface, points, with_grads=True)
+[rank0]:   File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/models_ae.py", line 679, in forward
+[rank0]:     o, g = self.decode_with_grad(x, queries)
+[rank0]:   File "/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/models_ae.py", line 657, in decode_with_grad
+[rank0]:     grads = torch.autograd.grad(
+[rank0]:   File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/autograd/__init__.py", line 496, in grad
+[rank0]:     result = _engine_run_backward(
+[rank0]:   File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/autograd/graph.py", line 825, in _engine_run_backward
+[rank0]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 256.00 MiB. GPU 0 has a total capacity of 10.75 GiB of which 133.62 MiB is free. Including non-PyTorch memory, this process has 10.62 GiB memory in use. Of the allocated memory 10.14 GiB is allocated by PyTorch, and 162.99 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+E0620 11:03:41.598578 998253 /mnt/lustre/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/api.py:869] failed (exitcode: 1) local_rank: 0 (pid: 998259) of binary: /home/ponsmoll/pba764/.conda/envs/shape2vec/bin/python3
+Traceback (most recent call last):
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py", line 208, in <module>
+    main()
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/typing_extensions.py", line 2853, in wrapper
+    return arg(*args, **kwargs)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py", line 204, in main
+    launch(args)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py", line 189, in launch
+    run(args)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/run.py", line 910, in run
+    elastic_launch(
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 138, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 269, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+main_ae_garmentcode.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2025-06-20_11:03:41
+  host      : galvani-cn105.sdn
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 998259)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: galvani-cn105: task 0: Exited with exit code 1
+srun: Terminating StepId=1561409.0

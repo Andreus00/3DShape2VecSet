@@ -1,0 +1,47 @@
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py:208: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use-env is set by default in torchrun.
+If your script expects `--local-rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  main()
+Traceback (most recent call last):
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py", line 208, in <module>
+    main()
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/typing_extensions.py", line 2853, in wrapper
+    return arg(*args, **kwargs)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py", line 204, in main
+    launch(args)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py", line 189, in launch
+    run(args)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/run.py", line 910, in run
+    elastic_launch(
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 138, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 260, in launch_agent
+    result = agent.run()
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/metrics/api.py", line 137, in wrapper
+    result = f(*args, **kwargs)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 696, in run
+    result = self._invoke_run(role)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 849, in _invoke_run
+    self._initialize_workers(self._worker_group)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/metrics/api.py", line 137, in wrapper
+    result = f(*args, **kwargs)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 668, in _initialize_workers
+    self._rendezvous(worker_group)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/metrics/api.py", line 137, in wrapper
+    result = f(*args, **kwargs)
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 500, in _rendezvous
+    rdzv_info = spec.rdzv_handler.next_rendezvous()
+  File "/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/elastic/rendezvous/static_tcp_rendezvous.py", line 67, in next_rendezvous
+    self._store = TCPStore(  # type: ignore[call-arg]
+RuntimeError: The server socket has failed to listen on any local network address. port: 29500, useIpv6: 0, code: -98, name: EADDRINUSE, message: address already in use
+srun: error: galvani-cn205: task 0: Exited with exit code 1
+srun: Terminating StepId=1549476.0

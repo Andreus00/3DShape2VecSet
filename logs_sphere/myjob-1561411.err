@@ -1,0 +1,12 @@
+/home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/distributed/launch.py:208: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use-env is set by default in torchrun.
+If your script expects `--local-rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  main()
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 1561411 ON galvani-cn105 CANCELLED AT 2025-06-20T11:03:56 ***
+slurmstepd: error: *** STEP 1561411.0 ON galvani-cn105 CANCELLED AT 2025-06-20T11:03:56 ***

@@ -1,0 +1,159 @@
+JobId=1560270 JobName=garment-encoder
+   UserId=pba764(5013) GroupId=ponsmoll(4037) MCS_label=N/A
+   Priority=44747 Nice=0 Account=ponsmoll QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=2-00:00:00 TimeMin=N/A
+   SubmitTime=2025-06-18T20:16:42 EligibleTime=2025-06-18T20:16:42
+   AccrueTime=2025-06-18T20:16:43
+   StartTime=2025-06-18T20:16:43 EndTime=2025-06-20T20:16:43 Deadline=N/A
+   PreemptEligibleTime=2025-06-18T20:17:43 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2025-06-18T20:16:43 Scheduler=Main
+   Partition=2080-galvani AllocNode:Sid=192.168.212.54:1460758
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=galvani-cn108
+   BatchHost=galvani-cn108
+   NumNodes=1 NumCPUs=8 NumTasks=1 CPUs/Task=8 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=8,mem=16G,node=1,billing=2,gres/gpu=4
+   AllocTRES=cpu=8,mem=16G,node=1,billing=2,gres/gpu=4,gres/gpu:rtx2080ti=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=8 MinMemoryNode=16G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/sbatch_run_gpu_training_single_garm.py
+   WorkDir=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+   StdErr=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs_sphere/myjob-1560270.err
+   StdIn=/dev/null
+   StdOut=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs_sphere/myjob-1560270.out
+   Power=
+   TresPerNode=gres:gpu:4
+   MailUser=andrea.sanchietti@uni-tuebingen.de MailType=INVALID_DEPEND,BEGIN,END,FAIL,REQUEUE,STAGE_OUT
+   
+
+/home/ponsmoll/pba764/projects/3DShape2VecSet
+RUNNING DIST OPTION 2
+| distributed init (rank 0): env://, gpu 0
+[20:17:15.985976] job dir: /mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+[20:17:15.986095] Namespace(batch_size=8,
+epochs=500,
+accum_iter=4,
+model='kl_garments',
+point_cloud_size=16384,
+num_samples=65536,
+random_samples_ratio=0.2,
+surface_samples_ratio=0.15,
+clip_grad=None,
+weight_decay=0.05,
+lr=0.0001,
+blr=0.0001,
+layer_decay=0.75,
+min_lr=1e-08,
+warmup_epochs=0,
+data_path='../GarmentCode/garmentcodedata_v2',
+output_dir='./output_single_garment',
+log_dir='./output_single_garment',
+device='cuda',
+seed=0,
+resume='',
+start_epoch=0,
+eval=False,
+dist_eval=False,
+num_workers=2,
+pin_mem=False,
+world_size=1,
+local_rank=0,
+dist_on_itp=False,
+dist_url='env://',
+only_udf=False,
+force_occupancy=True,
+save_every=1,
+max_dist=0.1,
+mse_loss=False,
+test_dummy_sphere=False,
+single_garment_overfit=True,
+body_model_normalization=False,
+body_model_normalization_alpha=0.5,
+rank=0,
+gpu=0,
+distributed=True,
+dist_backend='nccl')
+[20:17:16.285383] Using 4 GPUs
+[20:17:30.025569] Using 4 GPUs
+[20:17:41.313332] Sampler_train = <torch.utils.data.distributed.DistributedSampler object at 0x7fa2a1348760>
+[20:17:42.093132] Model = KLAutoEncoderV2(
+  (cross_attend_blocks): ModuleList(
+    (0): PreNorm(
+      (fn): Attention(
+        (to_q): Linear(in_features=512, out_features=512, bias=False)
+        (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+        (to_out): Linear(in_features=512, out_features=512, bias=True)
+        (drop_path): Identity()
+      )
+      (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (norm_context): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    )
+    (1): PreNorm(
+      (fn): FeedForward(
+        (net): Sequential(
+          (0): Linear(in_features=512, out_features=4096, bias=True)
+          (1): GEGLU()
+          (2): Linear(in_features=2048, out_features=512, bias=True)
+        )
+        (drop_path): Identity()
+      )
+      (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    )
+  )
+  (point_embed): PointEmbed(
+    (mlp): Linear(in_features=51, out_features=512, bias=True)
+  )
+  (layers): ModuleList(
+    (0-23): 24 x ModuleList(
+      (0): PreNorm(
+        (fn): Attention(
+          (to_q): Linear(in_features=512, out_features=512, bias=False)
+          (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+          (to_out): Linear(in_features=512, out_features=512, bias=True)
+          (drop_path): DropPath(drop_prob=0.100)
+        )
+        (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      )
+      (1): PreNorm(
+        (fn): FeedForward(
+          (net): Sequential(
+            (0): Linear(in_features=512, out_features=4096, bias=True)
+            (1): GEGLU()
+            (2): Linear(in_features=2048, out_features=512, bias=True)
+          )
+          (drop_path): DropPath(drop_prob=0.100)
+        )
+        (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+  )
+  (decoder_cross_attn): PreNorm(
+    (fn): Attention(
+      (to_q): Linear(in_features=512, out_features=512, bias=False)
+      (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+      (to_out): Linear(in_features=512, out_features=512, bias=True)
+      (drop_path): Identity()
+    )
+    (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    (norm_context): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+  )
+  (to_outputs): Linear(in_features=512, out_features=1, bias=True)
+  (proj): Linear(in_features=16, out_features=512, bias=True)
+  (mean_fc): Linear(in_features=512, out_features=16, bias=True)
+  (logvar_fc): Linear(in_features=512, out_features=16, bias=True)
+)
+[20:17:42.093176] number of params (M): 106.14
+[20:17:42.093196] base lr: 8.00e-04
+[20:17:42.093206] actual lr: 1.00e-04
+[20:17:42.093216] accumulate grad iterations: 4
+[20:17:42.093226] effective batch size: 32
+[20:17:42.132862] criterion = BCEWithLogitsLoss()
+[20:17:42.132894] Start training for 500 epochs
+[20:17:43.854738] log_dir: ./output_single_garment
+[20:17:44.946172] [20:17:44.946536] [20:17:44.946706] [20:17:44.946890] [20:17:44.947040] [20:17:44.947203] [20:17:44.947377] [20:17:44.947551] [20:17:44.947726] [20:17:44.947909] [20:17:44.948079] [20:17:44.948249] [20:17:44.948438] [20:17:44.948609] [20:17:44.948768] [20:17:44.948913] [20:17:44.949047] [20:17:44.949191] [20:17:44.949326] [20:17:44.949525] [20:17:44.949682] [1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mkl_garments[0m at: [34mhttps://wandb.ai/SewingGaussians/3DShape2VecSet_single_garment_distributed_bce/runs/ym3vyl3k[0m
+[1;34mwandb[0m: Find logs at: [1;35m../../../../../mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/wandb/run-20250618_201742-ym3vyl3k/logs[0m

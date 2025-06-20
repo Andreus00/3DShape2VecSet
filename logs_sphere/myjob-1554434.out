@@ -1,0 +1,157 @@
+JobId=1554434 JobName=garment-encoder
+   UserId=pba764(5013) GroupId=ponsmoll(4037) MCS_label=N/A
+   Priority=45692 Nice=0 Account=ponsmoll QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=2-00:00:00 TimeMin=N/A
+   SubmitTime=2025-06-16T17:06:55 EligibleTime=2025-06-16T17:06:55
+   AccrueTime=2025-06-16T17:06:56
+   StartTime=2025-06-16T17:06:56 EndTime=2025-06-18T17:06:56 Deadline=N/A
+   PreemptEligibleTime=2025-06-16T17:07:56 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2025-06-16T17:06:56 Scheduler=Main
+   Partition=2080-galvani AllocNode:Sid=192.168.212.54:3320948
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=galvani-cn122
+   BatchHost=galvani-cn122
+   NumNodes=1 NumCPUs=8 NumTasks=1 CPUs/Task=8 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=8,mem=16G,node=1,billing=2,gres/gpu=4
+   AllocTRES=cpu=8,mem=16G,node=1,billing=2,gres/gpu=4,gres/gpu:rtx2080ti=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=8 MinMemoryNode=16G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/sbatch_run_gpu_training_sphere.sh
+   WorkDir=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+   StdErr=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs_sphere/myjob-1554434.err
+   StdIn=/dev/null
+   StdOut=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs_sphere/myjob-1554434.out
+   Power=
+   TresPerNode=gres:gpu:4
+   MailUser=andrea.sanchietti@uni-tuebingen.de MailType=INVALID_DEPEND,BEGIN,END,FAIL,REQUEUE,STAGE_OUT
+   
+
+/home/ponsmoll/pba764/projects/3DShape2VecSet
+RUNNING DIST OPTION 2
+| distributed init (rank 0): env://, gpu 0
+[17:07:06.550337] job dir: /mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+[17:07:06.550433] Namespace(batch_size=3,
+epochs=500,
+accum_iter=32,
+model='kl_garments',
+point_cloud_size=10000,
+num_samples=20000,
+random_samples_ratio=0.2,
+surface_samples_ratio=0.15,
+clip_grad=None,
+weight_decay=0.05,
+lr=0.001,
+blr=0.0001,
+layer_decay=0.75,
+min_lr=1e-08,
+warmup_epochs=40,
+data_path='../GarmentCode/garmentcodedata_v2',
+output_dir='./output/',
+log_dir='./output/',
+device='cuda',
+seed=0,
+resume='',
+start_epoch=0,
+eval=False,
+dist_eval=False,
+num_workers=2,
+pin_mem=False,
+world_size=1,
+local_rank=0,
+dist_on_itp=False,
+dist_url='env://',
+only_udf=False,
+force_occupancy=True,
+save_every=1,
+max_dist=0.1,
+test_dummy_sphere=True,
+body_model_normalization=False,
+body_model_normalization_alpha=0.5,
+rank=0,
+gpu=0,
+distributed=True,
+dist_backend='nccl')
+[17:07:06.830595] Using 4 GPUs
+NO BOUNDARY FOUND
+[17:07:17.436588] Using 4 GPUs
+NO BOUNDARY FOUND
+[17:07:27.694714] Sampler_train = <torch.utils.data.distributed.DistributedSampler object at 0x7f670438b760>
+[17:07:28.533692] Model = KLAutoEncoderV2(
+  (cross_attend_blocks): ModuleList(
+    (0): PreNorm(
+      (fn): Attention(
+        (to_q): Linear(in_features=512, out_features=512, bias=False)
+        (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+        (to_out): Linear(in_features=512, out_features=512, bias=True)
+        (drop_path): Identity()
+      )
+      (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (norm_context): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    )
+    (1): PreNorm(
+      (fn): FeedForward(
+        (net): Sequential(
+          (0): Linear(in_features=512, out_features=4096, bias=True)
+          (1): GEGLU()
+          (2): Linear(in_features=2048, out_features=512, bias=True)
+        )
+        (drop_path): Identity()
+      )
+      (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    )
+  )
+  (point_embed): PointEmbed(
+    (mlp): Linear(in_features=51, out_features=512, bias=True)
+  )
+  (layers): ModuleList(
+    (0-23): 24 x ModuleList(
+      (0): PreNorm(
+        (fn): Attention(
+          (to_q): Linear(in_features=512, out_features=512, bias=False)
+          (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+          (to_out): Linear(in_features=512, out_features=512, bias=True)
+          (drop_path): DropPath(drop_prob=0.100)
+        )
+        (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      )
+      (1): PreNorm(
+        (fn): FeedForward(
+          (net): Sequential(
+            (0): Linear(in_features=512, out_features=4096, bias=True)
+            (1): GEGLU()
+            (2): Linear(in_features=2048, out_features=512, bias=True)
+          )
+          (drop_path): DropPath(drop_prob=0.100)
+        )
+        (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+  )
+  (decoder_cross_attn): PreNorm(
+    (fn): Attention(
+      (to_q): Linear(in_features=512, out_features=512, bias=False)
+      (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+      (to_out): Linear(in_features=512, out_features=512, bias=True)
+      (drop_path): Identity()
+    )
+    (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    (norm_context): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+  )
+  (to_outputs): Linear(in_features=512, out_features=1, bias=True)
+  (proj): Linear(in_features=16, out_features=512, bias=True)
+  (mean_fc): Linear(in_features=512, out_features=16, bias=True)
+  (logvar_fc): Linear(in_features=512, out_features=16, bias=True)
+)
+[17:07:28.533727] number of params (M): 106.14
+[17:07:28.533744] base lr: 2.67e-03
+[17:07:28.533752] actual lr: 1.00e-03
+[17:07:28.533760] accumulate grad iterations: 32
+[17:07:28.533767] effective batch size: 96
+[17:07:28.553656] criterion = BCEWithLogitsLoss()
+[17:07:28.553683] Start training for 500 epochs
+[17:07:28.555840] log_dir: ./output/
+[17:07:30.087450] Epoch: [0]  [  0/341]  eta: 0:08:41  lr: 0.000000  loss: 2.0642 (2.0642)  loss_near: 0.7007 (0.7007)  loss_rand: 0.6765 (0.6765)  loss_srf: 0.6765 (0.6765)  loss_kl: 0.0482 (0.0482)  loss_grads: 0.9957 (0.9957)  iou: 0.2725 (0.2725)  time: 1.5306  data: 0.1705  max mem: 8170

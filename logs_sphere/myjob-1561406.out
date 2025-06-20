@@ -1,0 +1,215 @@
+JobId=1561406 JobName=garment-encoder
+   UserId=pba764(5013) GroupId=ponsmoll(4037) MCS_label=N/A
+   Priority=43714 Nice=0 Account=ponsmoll QOS=normal
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:00 TimeLimit=2-00:00:00 TimeMin=N/A
+   SubmitTime=2025-06-20T10:56:05 EligibleTime=2025-06-20T10:56:05
+   AccrueTime=2025-06-20T10:56:05
+   StartTime=2025-06-20T10:56:05 EndTime=2025-06-22T10:56:05 Deadline=N/A
+   PreemptEligibleTime=2025-06-20T10:57:05 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2025-06-20T10:56:05 Scheduler=Main
+   Partition=2080-galvani AllocNode:Sid=192.168.212.54:347632
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=galvani-cn105
+   BatchHost=galvani-cn105
+   NumNodes=1 NumCPUs=8 NumTasks=1 CPUs/Task=8 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=8,mem=16G,node=1,billing=2,gres/gpu=4
+   AllocTRES=cpu=8,mem=16G,node=1,billing=2,gres/gpu=4,gres/gpu:rtx2080ti=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=8 MinMemoryNode=16G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
+   Command=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/sbatch_run_gpu_training_single_garm.py
+   WorkDir=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+   StdErr=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs_sphere/myjob-1561406.err
+   StdIn=/dev/null
+   StdOut=/mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet/./logs_sphere/myjob-1561406.out
+   Power=
+   TresPerNode=gres:gpu:4
+   MailUser=andrea.sanchietti@uni-tuebingen.de MailType=INVALID_DEPEND,BEGIN,END,FAIL,REQUEUE,STAGE_OUT
+   
+
+/home/ponsmoll/pba764/projects/3DShape2VecSet
+RUNNING DIST OPTION 2
+| distributed init (rank 0): env://, gpu 0
+[10:56:30.819837] job dir: /mnt/lustre/home/ponsmoll/pba764/projects/3DShape2VecSet
+[10:56:30.819992] Namespace(batch_size=1,
+epochs=500,
+accum_iter=32,
+model='kl_garments',
+point_cloud_size=16384,
+num_samples=65536,
+random_samples_ratio=0.2,
+surface_samples_ratio=0.15,
+clip_grad=None,
+weight_decay=0.05,
+lr=0.0001,
+blr=0.0001,
+layer_decay=0.75,
+min_lr=1e-08,
+warmup_epochs=0,
+data_path='../GarmentCode/garmentcodedata_v2',
+output_dir='./output_single_garment',
+log_dir='./output_single_garment',
+device='cuda',
+seed=0,
+resume='',
+start_epoch=0,
+eval=False,
+dist_eval=False,
+num_workers=2,
+pin_mem=False,
+world_size=1,
+local_rank=0,
+dist_on_itp=False,
+dist_url='env://',
+only_udf=False,
+force_occupancy=True,
+save_every=1,
+max_dist=0.1,
+mse_loss=False,
+test_dummy_sphere=False,
+single_garment_overfit=True,
+body_model_normalization=False,
+body_model_normalization_alpha=0.5,
+rank=0,
+gpu=0,
+distributed=True,
+dist_backend='nccl')
+[10:56:31.110490] Using 4 GPUs
+[10:56:49.750313] Using 4 GPUs
+[10:57:06.820828] Sampler_train = <torch.utils.data.distributed.DistributedSampler object at 0x7f24b2d4dca0>
+[10:57:07.684835] Model = KLAutoEncoderV2(
+  (cross_attend_blocks): ModuleList(
+    (0): PreNorm(
+      (fn): Attention(
+        (to_q): Linear(in_features=512, out_features=512, bias=False)
+        (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+        (to_out): Linear(in_features=512, out_features=512, bias=True)
+        (drop_path): Identity()
+      )
+      (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (norm_context): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    )
+    (1): PreNorm(
+      (fn): FeedForward(
+        (net): Sequential(
+          (0): Linear(in_features=512, out_features=4096, bias=True)
+          (1): GEGLU()
+          (2): Linear(in_features=2048, out_features=512, bias=True)
+        )
+        (drop_path): Identity()
+      )
+      (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    )
+  )
+  (point_embed): PointEmbed(
+    (mlp): Linear(in_features=51, out_features=512, bias=True)
+  )
+  (layers): ModuleList(
+    (0-23): 24 x ModuleList(
+      (0): PreNorm(
+        (fn): Attention(
+          (to_q): Linear(in_features=512, out_features=512, bias=False)
+          (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+          (to_out): Linear(in_features=512, out_features=512, bias=True)
+          (drop_path): DropPath(drop_prob=0.100)
+        )
+        (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      )
+      (1): PreNorm(
+        (fn): FeedForward(
+          (net): Sequential(
+            (0): Linear(in_features=512, out_features=4096, bias=True)
+            (1): GEGLU()
+            (2): Linear(in_features=2048, out_features=512, bias=True)
+          )
+          (drop_path): DropPath(drop_prob=0.100)
+        )
+        (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+  )
+  (decoder_cross_attn): PreNorm(
+    (fn): Attention(
+      (to_q): Linear(in_features=512, out_features=512, bias=False)
+      (to_kv): Linear(in_features=512, out_features=1024, bias=False)
+      (to_out): Linear(in_features=512, out_features=512, bias=True)
+      (drop_path): Identity()
+    )
+    (norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+    (norm_context): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+  )
+  (to_outputs): Linear(in_features=512, out_features=1, bias=True)
+  (proj): Linear(in_features=16, out_features=512, bias=True)
+  (mean_fc): Linear(in_features=512, out_features=16, bias=True)
+  (logvar_fc): Linear(in_features=512, out_features=16, bias=True)
+)
+[10:57:07.684878] number of params (M): 106.14
+[10:57:07.684898] base lr: 8.00e-04
+[10:57:07.684909] actual lr: 1.00e-04
+[10:57:07.684919] accumulate grad iterations: 32
+[10:57:07.684928] effective batch size: 32
+[10:57:07.715421] criterion = BCEWithLogitsLoss()
+[10:57:07.715470] Start training for 500 epochs
+[10:57:09.328122] log_dir: ./output_single_garment
+[10:57:10.939050] Epoch: [0]  [    0/65536]  eta: 1 day, 5:17:54  lr: 0.000100  loss: 2.1184 (2.1184)  loss_near: 0.6711 (0.6711)  loss_rand: 0.7184 (0.7184)  loss_srf: 0.7184 (0.7184)  loss_kl: 0.0507 (0.0507)  loss_grads: 0.9945 (0.9945)  iou: 0.7573 (0.7573)  time: 1.6094  data: 0.1243  max mem: 5147
+[10:57:16.348877] Epoch: [0]  [   20/65536]  eta: 6:04:52  lr: 0.000100  loss: 2.1139 (2.1245)  loss_near: 0.6723 (0.6698)  loss_rand: 0.7151 (0.7221)  loss_srf: 0.7151 (0.7221)  loss_kl: 0.0510 (0.0510)  loss_grads: 0.9996 (0.9989)  iou: 0.7562 (0.4872)  time: 0.2704  data: 0.0022  max mem: 5665
+[10:57:21.908779] Epoch: [0]  [   40/65536]  eta: 5:34:49  lr: 0.000100  loss: 2.1484 (2.2050)  loss_near: 0.7198 (0.9958)  loss_rand: 0.6410 (0.5993)  loss_srf: 0.6410 (0.5993)  loss_kl: 0.0512 (0.0524)  loss_grads: 1.0014 (1.0004)  iou: 0.0000 (0.3603)  time: 0.2779  data: 0.0022  max mem: 6477
+[10:57:27.381206] Epoch: [0]  [   60/65536]  eta: 5:22:50  lr: 0.000100  loss: 2.5164 (2.2991)  loss_near: 2.1368 (1.3611)  loss_rand: 0.1834 (0.4637)  loss_srf: 0.1834 (0.4637)  loss_kl: 0.0574 (0.0540)  loss_grads: 1.0055 (1.0023)  iou: 0.0000 (0.2422)  time: 0.2735  data: 0.0023  max mem: 6477
+[10:57:32.856215] Epoch: [0]  [   80/65536]  eta: 5:16:45  lr: 0.000100  loss: 2.0520 (2.2514)  loss_near: 0.7353 (1.2579)  loss_rand: 0.6452 (0.4915)  loss_srf: 0.6452 (0.4915)  loss_kl: 0.0692 (0.0574)  loss_grads: 1.0040 (1.0027)  iou: 0.0000 (0.1824)  time: 0.2736  data: 0.0023  max mem: 6477
+[10:57:38.312624] Epoch: [0]  [  100/65536]  eta: 5:12:51  lr: 0.000100  loss: 2.0228 (2.2053)  loss_near: 0.7501 (1.1618)  loss_rand: 0.6268 (0.5164)  loss_srf: 0.6268 (0.5164)  loss_kl: 0.0694 (0.0603)  loss_grads: 1.0026 (1.0028)  iou: 0.0000 (0.1538)  time: 0.2727  data: 0.0021  max mem: 6477
+[10:57:43.763592] Epoch: [0]  [  120/65536]  eta: 5:10:10  lr: 0.000100  loss: 1.9463 (2.1627)  loss_near: 0.8825 (1.1152)  loss_rand: 0.5265 (0.5184)  loss_srf: 0.5265 (0.5184)  loss_kl: 0.0809 (0.0637)  loss_grads: 1.0002 (1.0023)  iou: 0.0000 (0.1283)  time: 0.2725  data: 0.0021  max mem: 6477
+[10:57:49.255102] Epoch: [0]  [  140/65536]  eta: 5:08:31  lr: 0.000100  loss: 1.9183 (2.1295)  loss_near: 1.0904 (1.1028)  loss_rand: 0.4047 (0.5080)  loss_srf: 0.4047 (0.5080)  loss_kl: 0.0911 (0.0671)  loss_grads: 0.9970 (1.0017)  iou: 0.0000 (0.1101)  time: 0.2745  data: 0.0021  max mem: 6477
+[10:57:54.754559] Epoch: [0]  [  160/65536]  eta: 5:07:19  lr: 0.000100  loss: 1.9182 (2.1034)  loss_near: 1.1001 (1.1034)  loss_rand: 0.4028 (0.4946)  loss_srf: 0.4028 (0.4946)  loss_kl: 0.0921 (0.0703)  loss_grads: 0.9980 (1.0012)  iou: 0.0000 (0.0965)  time: 0.2749  data: 0.0020  max mem: 6477
+[10:58:00.237666] Epoch: [0]  [  180/65536]  eta: 5:06:16  lr: 0.000100  loss: 1.9418 (2.0854)  loss_near: 1.2302 (1.1168)  loss_rand: 0.3500 (0.4790)  loss_srf: 0.3500 (0.4790)  loss_kl: 0.1028 (0.0739)  loss_grads: 0.9945 (1.0006)  iou: 0.0000 (0.0858)  time: 0.2741  data: 0.0021  max mem: 6477
+[10:58:05.749115] Epoch: [0]  [  200/65536]  eta: 5:05:33  lr: 0.000100  loss: 1.9430 (2.0713)  loss_near: 1.2338 (1.1282)  loss_rand: 0.3484 (0.4662)  loss_srf: 0.3484 (0.4662)  loss_kl: 0.1039 (0.0771)  loss_grads: 0.9941 (1.0000)  iou: 0.0000 (0.0773)  time: 0.2755  data: 0.0021  max mem: 6477
+[10:58:11.260755] Epoch: [0]  [  220/65536]  eta: 5:04:57  lr: 0.000100  loss: 1.9381 (2.0593)  loss_near: 1.2152 (1.1359)  loss_rand: 0.3551 (0.4563)  loss_srf: 0.3551 (0.4563)  loss_kl: 0.1115 (0.0803)  loss_grads: 0.9937 (0.9995)  iou: 0.0000 (0.0703)  time: 0.2755  data: 0.0022  max mem: 6477
+[10:58:16.847468] Epoch: [0]  [  240/65536]  eta: 5:04:47  lr: 0.000100  loss: 1.9203 (2.0480)  loss_near: 1.1295 (1.1361)  loss_rand: 0.3899 (0.4506)  loss_srf: 0.3899 (0.4506)  loss_kl: 0.1199 (0.0835)  loss_grads: 0.9922 (0.9989)  iou: 0.0000 (0.0644)  time: 0.2792  data: 0.0022  max mem: 6477
+[10:58:22.431899] Epoch: [0]  [  260/65536]  eta: 5:04:37  lr: 0.000100  loss: 1.9184 (2.0381)  loss_near: 1.1152 (1.1330)  loss_rand: 0.3936 (0.4471)  loss_srf: 0.3936 (0.4471)  loss_kl: 0.1201 (0.0864)  loss_grads: 0.9905 (0.9983)  iou: 0.0000 (0.0595)  time: 0.2791  data: 0.0021  max mem: 6477
+[10:58:28.001730] Epoch: [0]  [  280/65536]  eta: 5:04:24  lr: 0.000100  loss: 1.9155 (2.0294)  loss_near: 1.0211 (1.1252)  loss_rand: 0.4404 (0.4467)  loss_srf: 0.4404 (0.4467)  loss_kl: 0.1270 (0.0893)  loss_grads: 0.9894 (0.9978)  iou: 0.0000 (0.0553)  time: 0.2784  data: 0.0021  max mem: 6477
+[10:58:33.519444] Epoch: [0]  [  300/65536]  eta: 5:04:00  lr: 0.000100  loss: 1.9235 (2.0224)  loss_near: 0.9534 (1.1149)  loss_rand: 0.4794 (0.4483)  loss_srf: 0.4794 (0.4483)  loss_kl: 0.1331 (0.0921)  loss_grads: 0.9886 (0.9972)  iou: 0.0000 (0.0516)  time: 0.2758  data: 0.0021  max mem: 6477
+[10:58:39.015758] Epoch: [0]  [  320/65536]  eta: 5:03:35  lr: 0.000100  loss: 1.9268 (2.0165)  loss_near: 0.9438 (1.1039)  loss_rand: 0.4850 (0.4508)  loss_srf: 0.4850 (0.4508)  loss_kl: 0.1341 (0.0947)  loss_grads: 0.9884 (0.9966)  iou: 0.0000 (0.0484)  time: 0.2747  data: 0.0021  max mem: 6477
+[10:58:44.788528] Epoch: [0]  [  340/65536]  eta: 5:04:04  lr: 0.000100  loss: 1.9315 (2.0115)  loss_near: 0.9229 (1.0934)  loss_rand: 0.4980 (0.4536)  loss_srf: 0.4980 (0.4536)  loss_kl: 0.1403 (0.0974)  loss_grads: 0.9876 (0.9961)  iou: 0.0000 (0.0455)  time: 0.2885  data: 0.0022  max mem: 6477
+[10:58:50.291361] Epoch: [0]  [  360/65536]  eta: 5:03:41  lr: 0.000100  loss: 1.9281 (2.0069)  loss_near: 0.9349 (1.0848)  loss_rand: 0.4904 (0.4556)  loss_srf: 0.4904 (0.4556)  loss_kl: 0.1406 (0.0999)  loss_grads: 0.9850 (0.9954)  iou: 0.0000 (0.0430)  time: 0.2750  data: 0.0021  max mem: 6477
+[10:58:55.774562] Epoch: [0]  [  380/65536]  eta: 5:03:17  lr: 0.000100  loss: 1.9254 (2.0026)  loss_near: 0.9442 (1.0775)  loss_rand: 0.4852 (0.4571)  loss_srf: 0.4852 (0.4571)  loss_kl: 0.1454 (0.1023)  loss_grads: 0.9830 (0.9948)  iou: 0.0000 (0.0408)  time: 0.2741  data: 0.0021  max mem: 6477
+[10:59:01.283988] Epoch: [0]  [  400/65536]  eta: 5:02:59  lr: 0.000100  loss: 1.9166 (1.9983)  loss_near: 1.0041 (1.0736)  loss_rand: 0.4490 (0.4569)  loss_srf: 0.4490 (0.4569)  loss_kl: 0.1502 (0.1046)  loss_grads: 0.9807 (0.9941)  iou: 0.0000 (0.0387)  time: 0.2754  data: 0.0022  max mem: 6477
+[10:59:06.865082] Epoch: [0]  [  420/65536]  eta: 5:02:53  lr: 0.000100  loss: 1.9162 (1.9944)  loss_near: 1.0063 (1.0709)  loss_rand: 0.4499 (0.4563)  loss_srf: 0.4499 (0.4563)  loss_kl: 0.1515 (0.1069)  loss_grads: 0.9791 (0.9934)  iou: 0.0000 (0.0369)  time: 0.2789  data: 0.0023  max mem: 6477
+[10:59:12.407310] Epoch: [0]  [  440/65536]  eta: 5:02:41  lr: 0.000100  loss: 1.9150 (1.9908)  loss_near: 1.0650 (1.0708)  loss_rand: 0.4186 (0.4545)  loss_srf: 0.4186 (0.4545)  loss_kl: 0.1552 (0.1091)  loss_grads: 0.9744 (0.9926)  iou: 0.0000 (0.0352)  time: 0.2770  data: 0.0022  max mem: 6477
+[10:59:17.951348] Epoch: [0]  [  460/65536]  eta: 5:02:30  lr: 0.000100  loss: 1.9166 (1.9876)  loss_near: 1.1011 (1.0718)  loss_rand: 0.4012 (0.4524)  loss_srf: 0.4012 (0.4524)  loss_kl: 0.1584 (0.1112)  loss_grads: 0.9723 (0.9917)  iou: 0.0000 (0.0337)  time: 0.2771  data: 0.0022  max mem: 6477
+[10:59:23.493329] Epoch: [0]  [  480/65536]  eta: 5:02:19  lr: 0.000100  loss: 1.9180 (1.9847)  loss_near: 1.1176 (1.0738)  loss_rand: 0.3944 (0.4499)  loss_srf: 0.3944 (0.4499)  loss_kl: 0.1587 (0.1132)  loss_grads: 0.9719 (0.9909)  iou: 0.0000 (0.0323)  time: 0.2770  data: 0.0023  max mem: 6477
+[10:59:29.008893] Epoch: [0]  [  500/65536]  eta: 5:02:06  lr: 0.000100  loss: 1.9210 (1.9822)  loss_near: 1.1383 (1.0765)  loss_rand: 0.3836 (0.4473)  loss_srf: 0.3836 (0.4473)  loss_kl: 0.1618 (0.1151)  loss_grads: 0.9683 (0.9900)  iou: 0.0000 (0.0310)  time: 0.2757  data: 0.0022  max mem: 6477
+[10:59:34.527341] Epoch: [0]  [  520/65536]  eta: 5:01:53  lr: 0.000100  loss: 1.9216 (1.9799)  loss_near: 1.1444 (1.0792)  loss_rand: 0.3818 (0.4448)  loss_srf: 0.3818 (0.4448)  loss_kl: 0.1633 (0.1170)  loss_grads: 0.9673 (0.9892)  iou: 0.0000 (0.0298)  time: 0.2758  data: 0.0020  max mem: 6477
+[10:59:40.011466] Epoch: [0]  [  540/65536]  eta: 5:01:37  lr: 0.000100  loss: 1.9195 (1.9776)  loss_near: 1.1385 (1.0814)  loss_rand: 0.3837 (0.4426)  loss_srf: 0.3837 (0.4426)  loss_kl: 0.1655 (0.1188)  loss_grads: 0.9651 (0.9883)  iou: 0.0000 (0.0287)  time: 0.2741  data: 0.0021  max mem: 6477
+[10:59:45.510640] Epoch: [0]  [  560/65536]  eta: 5:01:23  lr: 0.000100  loss: 1.9159 (1.9754)  loss_near: 1.1109 (1.0825)  loss_rand: 0.3964 (0.4409)  loss_srf: 0.3964 (0.4409)  loss_kl: 0.1666 (0.1205)  loss_grads: 0.9633 (0.9874)  iou: 0.0000 (0.0277)  time: 0.2749  data: 0.0020  max mem: 6477
+[10:59:51.016854] Epoch: [0]  [  580/65536]  eta: 5:01:10  lr: 0.000100  loss: 1.9140 (1.9733)  loss_near: 1.1038 (1.0831)  loss_rand: 0.3976 (0.4396)  loss_srf: 0.3976 (0.4396)  loss_kl: 0.1676 (0.1221)  loss_grads: 0.9600 (0.9864)  iou: 0.0000 (0.0267)  time: 0.2752  data: 0.0019  max mem: 6477
+[10:59:56.509181] Epoch: [0]  [  600/65536]  eta: 5:00:57  lr: 0.000100  loss: 1.9118 (1.9713)  loss_near: 1.0654 (1.0824)  loss_rand: 0.4169 (0.4389)  loss_srf: 0.4169 (0.4389)  loss_kl: 0.1692 (0.1237)  loss_grads: 0.9577 (0.9855)  iou: 0.0000 (0.0258)  time: 0.2745  data: 0.0021  max mem: 6477
+[11:00:02.022321] Epoch: [0]  [  620/65536]  eta: 5:00:46  lr: 0.000100  loss: 1.9111 (1.9693)  loss_near: 1.0254 (1.0809)  loss_rand: 0.4375 (0.4387)  loss_srf: 0.4375 (0.4387)  loss_kl: 0.1705 (0.1252)  loss_grads: 0.9585 (0.9846)  iou: 0.0000 (0.0250)  time: 0.2756  data: 0.0019  max mem: 6477
+[11:00:07.583606] Epoch: [0]  [  640/65536]  eta: 5:00:40  lr: 0.000100  loss: 1.9113 (1.9675)  loss_near: 1.0193 (1.0790)  loss_rand: 0.4388 (0.4387)  loss_srf: 0.4388 (0.4387)  loss_kl: 0.1712 (0.1266)  loss_grads: 0.9557 (0.9837)  iou: 0.0000 (0.0242)  time: 0.2780  data: 0.0021  max mem: 6477
+[11:00:13.116653] Epoch: [0]  [  660/65536]  eta: 5:00:32  lr: 0.000100  loss: 1.9129 (1.9659)  loss_near: 0.9918 (1.0762)  loss_rand: 0.4545 (0.4393)  loss_srf: 0.4545 (0.4393)  loss_kl: 0.1731 (0.1281)  loss_grads: 0.9549 (0.9828)  iou: 0.0000 (0.0235)  time: 0.2766  data: 0.0021  max mem: 6477
+[11:00:18.682836] Epoch: [0]  [  680/65536]  eta: 5:00:27  lr: 0.000100  loss: 1.9128 (1.9643)  loss_near: 0.9854 (1.0735)  loss_rand: 0.4583 (0.4399)  loss_srf: 0.4583 (0.4399)  loss_kl: 0.1733 (0.1294)  loss_grads: 0.9537 (0.9820)  iou: 0.0000 (0.0228)  time: 0.2782  data: 0.0021  max mem: 6477
+[11:00:24.229818] Epoch: [0]  [  700/65536]  eta: 5:00:20  lr: 0.000100  loss: 1.9123 (1.9628)  loss_near: 0.9776 (1.0707)  loss_rand: 0.4622 (0.4405)  loss_srf: 0.4622 (0.4405)  loss_kl: 0.1747 (0.1307)  loss_grads: 0.9530 (0.9811)  iou: 0.0000 (0.0222)  time: 0.2773  data: 0.0021  max mem: 6477
+[11:00:29.805603] Epoch: [0]  [  720/65536]  eta: 5:00:16  lr: 0.000100  loss: 1.9089 (1.9613)  loss_near: 0.9819 (1.0683)  loss_rand: 0.4562 (0.4410)  loss_srf: 0.4562 (0.4410)  loss_kl: 0.1763 (0.1319)  loss_grads: 0.9512 (0.9803)  iou: 0.0000 (0.0215)  time: 0.2787  data: 0.0024  max mem: 6477
+[11:00:35.316653] Epoch: [0]  [  740/65536]  eta: 5:00:06  lr: 0.000100  loss: 1.9088 (1.9599)  loss_near: 0.9864 (1.0661)  loss_rand: 0.4555 (0.4413)  loss_srf: 0.4555 (0.4413)  loss_kl: 0.1769 (0.1331)  loss_grads: 0.9488 (0.9795)  iou: 0.0000 (0.0210)  time: 0.2754  data: 0.0022  max mem: 6477
+[11:00:40.807156] Epoch: [0]  [  760/65536]  eta: 4:59:54  lr: 0.000100  loss: 1.9024 (1.9584)  loss_near: 1.0035 (1.0645)  loss_rand: 0.4431 (0.4414)  loss_srf: 0.4431 (0.4414)  loss_kl: 0.1779 (0.1343)  loss_grads: 0.9464 (0.9786)  iou: 0.0000 (0.0204)  time: 0.2744  data: 0.0023  max mem: 6477
+[11:00:46.322873] Epoch: [0]  [  780/65536]  eta: 4:59:45  lr: 0.000100  loss: 1.8996 (1.9569)  loss_near: 1.0243 (1.0635)  loss_rand: 0.4287 (0.4411)  loss_srf: 0.4287 (0.4411)  loss_kl: 0.1793 (0.1355)  loss_grads: 0.9456 (0.9778)  iou: 0.0000 (0.0199)  time: 0.2757  data: 0.0020  max mem: 6477
+[11:00:51.845943] Epoch: [0]  [  800/65536]  eta: 4:59:37  lr: 0.000100  loss: 1.8961 (1.9553)  loss_near: 1.0400 (1.0629)  loss_rand: 0.4219 (0.4407)  loss_srf: 0.4219 (0.4407)  loss_kl: 0.1804 (0.1366)  loss_grads: 0.9446 (0.9770)  iou: 0.0000 (0.0194)  time: 0.2761  data: 0.0019  max mem: 6477
+[11:00:57.327051] Epoch: [0]  [  820/65536]  eta: 4:59:25  lr: 0.000100  loss: 1.8934 (1.9539)  loss_near: 1.0686 (1.0631)  loss_rand: 0.4067 (0.4398)  loss_srf: 0.4067 (0.4398)  loss_kl: 0.1833 (0.1377)  loss_grads: 0.9435 (0.9762)  iou: 0.0000 (0.0189)  time: 0.2740  data: 0.0020  max mem: 6477
+[11:01:02.895604] Epoch: [0]  [  840/65536]  eta: 4:59:21  lr: 0.000100  loss: 1.8927 (1.9524)  loss_near: 1.0746 (1.0633)  loss_rand: 0.4035 (0.4390)  loss_srf: 0.4035 (0.4390)  loss_kl: 0.1848 (0.1389)  loss_grads: 0.9418 (0.9753)  iou: 0.0000 (0.0185)  time: 0.2783  data: 0.0019  max mem: 6477
+[11:01:08.410473] Epoch: [0]  [  860/65536]  eta: 4:59:13  lr: 0.000100  loss: 1.8835 (1.9508)  loss_near: 1.0739 (1.0635)  loss_rand: 0.3982 (0.4380)  loss_srf: 0.3982 (0.4380)  loss_kl: 0.1871 (0.1400)  loss_grads: 0.9400 (0.9745)  iou: 0.0000 (0.0180)  time: 0.2757  data: 0.0021  max mem: 6477
+[11:01:13.948185] Epoch: [0]  [  880/65536]  eta: 4:59:06  lr: 0.000100  loss: 1.8627 (1.9488)  loss_near: 1.0665 (1.0636)  loss_rand: 0.3939 (0.4370)  loss_srf: 0.3939 (0.4370)  loss_kl: 0.1937 (0.1412)  loss_grads: 0.9392 (0.9738)  iou: 0.0000 (0.0176)  time: 0.2768  data: 0.0020  max mem: 6477
+[11:01:19.506295] Epoch: [0]  [  900/65536]  eta: 4:59:01  lr: 0.000100  loss: 1.8571 (1.9467)  loss_near: 1.0585 (1.0634)  loss_rand: 0.3931 (0.4361)  loss_srf: 0.3931 (0.4361)  loss_kl: 0.1943 (0.1424)  loss_grads: 0.9378 (0.9730)  iou: 0.0000 (0.0172)  time: 0.2778  data: 0.0020  max mem: 6477
+[11:01:25.051371] Epoch: [0]  [  920/65536]  eta: 4:58:54  lr: 0.000100  loss: 1.8332 (1.9443)  loss_near: 1.0245 (1.0626)  loss_rand: 0.3986 (0.4353)  loss_srf: 0.3986 (0.4353)  loss_kl: 0.2043 (0.1438)  loss_grads: 0.9394 (0.9723)  iou: 0.0000 (0.0169)  time: 0.2772  data: 0.0021  max mem: 6477
+[11:01:30.617192] Epoch: [0]  [  940/65536]  eta: 4:58:50  lr: 0.000100  loss: 1.7656 (1.9408)  loss_near: 0.9454 (1.0604)  loss_rand: 0.4030 (0.4346)  loss_srf: 0.4030 (0.4346)  loss_kl: 0.2210 (0.1453)  loss_grads: 0.9392 (0.9716)  iou: 0.0000 (0.0165)  time: 0.2782  data: 0.0021  max mem: 6477
+[11:01:36.143027] Epoch: [0]  [  960/65536]  eta: 4:58:42  lr: 0.000100  loss: 1.7641 (1.9370)  loss_near: 0.9385 (1.0580)  loss_rand: 0.4019 (0.4339)  loss_srf: 0.4019 (0.4339)  loss_kl: 0.2212 (0.1469)  loss_grads: 0.9388 (0.9709)  iou: 0.0000 (0.0162)  time: 0.2762  data: 0.0021  max mem: 6477
+[11:01:41.640489] Epoch: [0]  [  980/65536]  eta: 4:58:33  lr: 0.000100  loss: 1.6576 (1.9314)  loss_near: 0.8430 (1.0534)  loss_rand: 0.4057 (0.4334)  loss_srf: 0.4057 (0.4334)  loss_kl: 0.2497 (0.1490)  loss_grads: 0.9396 (0.9702)  iou: 0.0000 (0.0158)  time: 0.2748  data: 0.0021  max mem: 6477
+[11:01:47.171540] Epoch: [0]  [ 1000/65536]  eta: 4:58:26  lr: 0.000100  loss: 1.5697 (1.9244)  loss_near: 0.7402 (1.0477)  loss_rand: 0.4023 (0.4328)  loss_srf: 0.4023 (0.4328)  loss_kl: 0.2513 (0.1514)  loss_grads: 0.9405 (0.9697)  iou: 0.0000 (0.0208)  time: 0.2765  data: 0.0019  max mem: 6477
+[11:01:52.681265] Epoch: [0]  [ 1020/65536]  eta: 4:58:18  lr: 0.000100  loss: 1.4864 (1.9160)  loss_near: 0.7116 (1.0407)  loss_rand: 0.3938 (0.4320)  loss_srf: 0.3938 (0.4320)  loss_kl: 0.2949 (0.1543)  loss_grads: 0.9398 (0.9691)  iou: 0.2483 (0.0286)  time: 0.2754  data: 0.0020  max mem: 6477
+[11:01:58.196610] Epoch: [0]  [ 1040/65536]  eta: 4:58:10  lr: 0.000100  loss: 1.3087 (1.9049)  loss_near: 0.5004 (1.0309)  loss_rand: 0.3936 (0.4314)  loss_srf: 0.3936 (0.4314)  loss_kl: 0.3627 (0.1581)  loss_grads: 0.9386 (0.9685)  iou: 0.8873 (0.0433)  time: 0.2757  data: 0.0020  max mem: 6477
+[11:02:03.808891] Epoch: [0]  [ 1060/65536]  eta: 4:58:09  lr: 0.000100  loss: 1.2897 (1.8930)  loss_near: 0.4913 (1.0207)  loss_rand: 0.3782 (0.4305)  loss_srf: 0.3782 (0.4305)  loss_kl: 0.3639 (0.1623)  loss_grads: 0.9387 (0.9679)  iou: 0.8955 (0.0594)  time: 0.2805  data: 0.0046  max mem: 6477
+[11:02:09.329238] Epoch: [0]  [ 1080/65536]  eta: 4:58:01  lr: 0.000100  loss: 1.1798 (1.8799)  loss_near: 0.3965 (1.0092)  loss_rand: 0.3880 (0.4297)  loss_srf: 0.3880 (0.4297)  loss_kl: 0.4299 (0.1672)  loss_grads: 0.9391 (0.9674)  iou: 0.8866 (0.0747)  time: 0.2759  data: 0.0019  max mem: 6477
+[11:02:14.870002] Epoch: [0]  [ 1100/65536]  eta: 4:57:55  lr: 0.000100  loss: 1.0146 (1.8650)  loss_near: 0.3984 (0.9982)  loss_rand: 0.3144 (0.4277)  loss_srf: 0.3144 (0.4277)  loss_kl: 0.4586 (0.1724)  loss_grads: 0.9412 (0.9669)  iou: 0.8977 (0.0896)  time: 0.2769  data: 0.0019  max mem: 6477
+[11:02:20.439843] Epoch: [0]  [ 1120/65536]  eta: 4:57:51  lr: 0.000100  loss: 1.0018 (1.8496)  loss_near: 0.3831 (0.9873)  loss_rand: 0.3006 (0.4255)  loss_srf: 0.3006 (0.4255)  loss_kl: 0.4626 (0.1776)  loss_grads: 0.9383 (0.9664)  iou: 0.8972 (0.1040)  time: 0.2784  data: 0.0019  max mem: 6477
+[11:02:25.993252] Epoch: [0]  [ 1140/65536]  eta: 4:57:45  lr: 0.000100  loss: 0.8369 (1.8324)  loss_near: 0.4917 (0.9789)  loss_rand: 0.1622 (0.4210)  loss_srf: 0.1622 (0.4210)  loss_kl: 0.4683 (0.1827)  loss_grads: 0.9398 (0.9660)  iou: 0.8827 (0.1165)  time: 0.2776  data: 0.0019  max mem: 6477
+[11:02:31.557420] Epoch: [0]  [ 1160/65536]  eta: 4:57:41  lr: 0.000100  loss: 0.8306 (1.8154)  loss_near: 0.4680 (0.9712)  loss_rand: 0.1513 (0.4163)  loss_srf: 0.1513 (0.4163)  loss_kl: 0.4724 (0.1877)  loss_grads: 0.9439 (0.9656)  iou: 0.8676 (0.1286)  time: 0.2781  data: 0.0020  max mem: 6477
