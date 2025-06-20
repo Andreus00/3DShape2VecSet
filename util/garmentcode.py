@@ -174,7 +174,7 @@ data_keys = {
     "gradients_rand"
 }
 
-def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha, test_dummy_sphere, single_garment_overfit):
+def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha, test_dummy_sphere, single_garment_overfit, scaling):
     """Processes a single garment on a specific GPU."""
 
     subpath, gpu_id = args
@@ -204,7 +204,6 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
                 elif all(key in data for key in (data_keys - {'boundary'})):
                     # Only 'boundary' is missing, so compute and add it
                     mesh_trimesh = tri.load(str(model_file))
-                    scaling = 1.5
                     if test_dummy_sphere:
                         mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
                     b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
@@ -244,7 +243,6 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
     # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
     # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
     mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
-    scaling = 1.5
     if test_dummy_sphere:
         mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
     b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
@@ -255,7 +253,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
     b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
     shifts = (b_max + b_min) / 2
-    scale = (1 / np.abs(b_max - b_min).max()) * scaling
+    scale = (1 / np.abs(b_max - b_min).max())
     if not (0.99 <= scale <= 1.01):
         print(f"Warning: Normalization Failed. Scale is not close to 1 (scale={scale}) for {model_file}")
     if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
@@ -308,6 +306,7 @@ class GarmentCode(data.Dataset):
         self.n_sfc_pts = int(surface_samples_ratio * num_samples)
         self.n_near_pts = num_samples - (self.n_rnd_pts + self.n_sfc_pts)
 
+        self.scaling = 1.5
         self.n_surf_bnd_pts = self.pc_size // 4
         self.n_surf_imp_pts = self.pc_size // 4
         self.n_surf_rnd_pts = self.pc_size - (self.n_surf_bnd_pts + self.n_surf_imp_pts)
@@ -362,6 +361,7 @@ class GarmentCode(data.Dataset):
                         body_model_normalization_alpha=self.body_model_normalization_alpha,
                         test_dummy_sphere=test_dummy_sphere,
                         single_garment_overfit=single_garment_overfit,
+                        scaling=self.scaling
                     ),
                     [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
                 ),
