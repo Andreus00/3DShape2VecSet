@@ -59,68 +59,12 @@ def compute_udf_and_gradients(
     _ = scene.add_triangles(vertices, triangles)
 
     # compute the closest point on surface for queries
-    closest_points_info = scene.compute_closest_points(queries.detach().cpu().numpy())
-    closest_points = closest_points_info["points"]
-    closest_points_triangles = np.asarray(closest_points_info["primitive_ids"].numpy()).astype(np.int8)
-    # Get the normal of the triangle where the closest points are
-    # exit()
-
-    tri = vertices[triangles[closest_points_triangles]]
-    tri_norm, _ = trimesh.triangles.normals(tri)
-    triangle_normals = torch.as_tensor(tri_norm, device=device)
-    closest_normals = triangle_normals[closest_points_triangles]
-    closest_points = torch.as_tensor(closest_points.numpy(), device=device)
+    closest_points = scene.compute_closest_points(queries.detach().cpu().numpy())["points"]
+    closest_points = torch.tensor(closest_points.numpy())
 
     q2p = queries - closest_points
     udf = torch.linalg.vector_norm(q2p, dim=-1)
-    gradients = q2p # torch.nn.functional.normalize(q2p, dim=-1)
-
-
-    # # Compute sign for SDF: negative inside, positive outside
-    # signed_distances = scene.compute_signed_distance(queries.detach().cpu().numpy())
-    # sign = torch.sign(torch.tensor(signed_distances.numpy(), device=device))
-    # sdf = udf * sign
-
-    # # Check alignment between gradient and closest normal based on sdf sign
-    # cos_sim = torch.sign(torch.nn.functional.cosine_similarity(gradients, closest_normals, dim=-1))
-    # # For positive sdf, gradient and normal should be opposite (cos < 0)
-    # # For negative sdf, gradient and normal should be aligned (cos > 0)
-    # check = torch.where(sign > 0, cos_sim > 0, cos_sim < 0)
-
-    # # Select points with low UDF (< 1e-3)
-    # num_lowest = min(50, udf.shape[0])
-    # lowest_indices = torch.topk(udf, num_lowest, largest=False).indices
-    # rand_idxs = torch.randint(0, udf.shape[0], (50,), device=lowest_indices.device)
-    # indices = torch.cat([lowest_indices, rand_idxs])
-    
-    # if not torch.all(check):
-    #     print("Warning: Some gradients and normals do not match expected direction based on sdf sign.")
-    #     bad_indices = torch.nonzero(~check).squeeze()
-    #     print(f"Indices of points with incorrect sign: {len(bad_indices)}")
-    #     indices =  bad_indices[:100]
-
-    # low_udf_points = queries[indices]
-    # low_grad_points = gradients[indices]
-    # sdf_pts = sdf[indices]
-    # # Plotting
-    # import matplotlib.pyplot as plt
-    # import matplotlib.cm as cm
-    # colormap = cm.inferno
-
-    # if low_udf_points.shape[0] > 0:
-
-    #     fig = plt.figure()
-    #     ax = fig.add_subplot(111, projection='3d')
-    #     pts = low_udf_points.detach().cpu().numpy()
-    #     grd = low_grad_points.detach().cpu().numpy()
-    #     sdf_pts = torch.sign(sdf_pts).detach().cpu().numpy()
-    #     ax.quiver(pts[:, 0], pts[:, 1], pts[:, 2], grd[:, 0], grd[:, 1], grd[:, 2], color=colormap(sdf_pts), normalize=True)
-    #     # Add the sphere mesh to the plot
-    #     ax.plot_trisurf(vertices[:, 0], vertices[:,1], triangles=triangles, Z=vertices[:,2], color='g')
-    #     ax.set_title('Points with UDF < 1e-3')
-        
-    #     plt.show()
-    #     plt.pause(100)
+    gradients = torch.nn.functional.normalize(q2p, dim=-1)
 
     return udf, gradients
 
