@@ -253,7 +253,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
     b_min, b_max = mesh_trimesh.bounding_box.bounds[0], mesh_trimesh.bounding_box.bounds[1]
     shifts = (b_max + b_min) / 2
-    scale = (1 / np.abs(b_max - b_min).max())
+    scale = (1 / np.abs(b_max - b_min).max()) * scaling
     if not (0.99 <= scale <= 1.01):
         print(f"Warning: Normalization Failed. Scale is not close to 1 (scale={scale}) for {model_file}")
     if not np.allclose(shifts, np.zeros_like(shifts), atol=1e-2):
