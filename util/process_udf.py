@@ -60,7 +60,7 @@ def compute_udf_and_gradients(
 
     # compute the closest point on surface for queries
     closest_points = scene.compute_closest_points(queries.detach().cpu().numpy())["points"]
-    closest_points = torch.tensor(closest_points.numpy())
+    closest_points = torch.tensor(closest_points.numpy(), device=device)
 
     q2p = queries - closest_points
     udf = torch.linalg.vector_norm(q2p, dim=-1)
