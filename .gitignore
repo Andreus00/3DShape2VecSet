@@ -1,6 +1,6 @@
 output*
 __pycache__
-logs
+logs*
 server-ckpt
 mesh_output
 _final*
