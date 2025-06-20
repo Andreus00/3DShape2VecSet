@@ -174,7 +174,7 @@ data_keys = {
     "gradients_rand"
 }
 
-def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha, test_dummy_sphere):
+def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, max_dist, body_model_normalization_alpha, test_dummy_sphere, single_garment_overfit):
     """Processes a single garment on a specific GPU."""
 
     subpath, gpu_id = args
@@ -274,13 +274,19 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
                 points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \
                 gradients_rand=gradients_rand)
 
-    del boundary, surface, surface_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand
+    ret = None
 
-    return {
-        'model': model_file,
-        'point_path': udf_path,
-        'body_info_path': body_info_path
-    }
+    if test_dummy_sphere or single_garment_overfit:
+        ret = (boundary, surface, surface_grads, importance_points.cpu().detach().numpy(), importance_grad.cpu().detach().numpy(), points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand)
+    else:
+        del boundary, surface, surface_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand
+        ret = {
+            'model': model_file,
+            'point_path': udf_path,
+            'body_info_path': body_info_path
+        }
+
+    return ret
 
 class GarmentCode(data.Dataset):
 
@@ -305,6 +311,9 @@ class GarmentCode(data.Dataset):
         self.n_surf_bnd_pts = self.pc_size // 4
         self.n_surf_imp_pts = self.pc_size // 4
         self.n_surf_rnd_pts = self.pc_size - (self.n_surf_bnd_pts + self.n_surf_imp_pts)
+
+        self.test_dummy_sphere = test_dummy_sphere
+        self.single_garment_overfit = single_garment_overfit
 
         # Load split file
         train_val_test_path = os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json')
@@ -351,7 +360,8 @@ class GarmentCode(data.Dataset):
                         force_occupancy=self.force_occupancy,
                         max_dist=self.max_dist,
                         body_model_normalization_alpha=self.body_model_normalization_alpha,
-                        test_dummy_sphere=test_dummy_sphere
+                        test_dummy_sphere=test_dummy_sphere,
+                        single_garment_overfit=single_garment_overfit,
                     ),
                     [(el, i % world_size) for i, el in enumerate(self.mesh_folders)]
                 ),
@@ -366,25 +376,27 @@ class GarmentCode(data.Dataset):
         idx = idx % len(self.models)
 
         # model_path = self.models[idx]['model']
-        point_path = self.models[idx]['point_path']
-
-        try:
-            with np.load(point_path) as data:
-                boundary_points = data["boundary"]
-                sfc = data["surface"]
-                sfc_grads = data["surface_grads"]
-                importance_points = data["importance_points"]
-                points_near = data["points_near"]
-                points_rand = data["points_rand"]
-                udf_near = data["udf_near"]
-                udf_rand = data["udf_rand"]
-                importance_grad = data["importance_grad"]
-                gradients_near = data["gradients_near"]
-                gradients_rand = data["gradients_rand"]
-                
-        except Exception as e:
-            print(e)
-            print(point_path)
+        if self.single_garment_overfit or self.test_dummy_sphere:   # If we are testing the dummy sphere or single garment overfit, we store the points directly in memory
+            boundary_points, sfc, sfc_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand = self.models[idx]
+        else:
+            point_path = self.models[idx]['point_path']
+            try:
+                with np.load(point_path) as data:
+                    boundary_points = data["boundary"]
+                    sfc = data["surface"]
+                    sfc_grads = data["surface_grads"]
+                    importance_points = data["importance_points"]
+                    points_near = data["points_near"]
+                    points_rand = data["points_rand"]
+                    udf_near = data["udf_near"]
+                    udf_rand = data["udf_rand"]
+                    importance_grad = data["importance_grad"]
+                    gradients_near = data["gradients_near"]
+                    gradients_rand = data["gradients_rand"]
+                    
+            except Exception as e:
+                print(e)
+                print(point_path)
 
         if self.return_surface:
             if self.surface_sampling:
@@ -393,8 +405,6 @@ class GarmentCode(data.Dataset):
                 idxs_boundary = np.random.default_rng().choice(boundary_points.shape[0], self.n_surf_bnd_pts, replace=False)
                 
                 surface = torch.cat([torch.from_numpy(sfc[idxs]), torch.from_numpy(importance_points[idxs_importance]), torch.from_numpy(boundary_points[idxs_boundary])]).float()
-                
-
             else:
                 surface = torch.cat([torch.from_numpy(sfc), torch.from_numpy(importance_points)]).float()
                 
