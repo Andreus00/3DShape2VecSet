@@ -745,7 +745,7 @@ def ae_garments(N=8192):
 
 # test cluster
 def kl_garments(N=8192):
-    return create_autoencoder(dim=512, M=512, latent_dim=16, N=N, determinisitc=False, v2=True)
+    return create_autoencoder(dim=512, M=1024, latent_dim=32, N=N, determinisitc=False, v2=True)
 
 
 # test local
