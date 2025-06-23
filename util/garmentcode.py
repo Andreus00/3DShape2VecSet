@@ -288,7 +288,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False, limit=None):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -340,6 +340,10 @@ class GarmentCode(data.Dataset):
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
         self.mean_body_mean = (self.mean_body_model.vertices * 100).mean(axis=0)
+
+        if limit is not None:
+            self.mesh_folders = self.mesh_folders[:limit]
+            print(f"Limiting dataset to {limit} samples.")
 
         # Parallen gpu running
         
