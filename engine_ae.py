@@ -103,21 +103,22 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
         
-        points = points * args.global_scale
-        surface = surface * args.global_scale
-        udf = udf * args.global_scale
+        points = points.to(device, non_blocking=True)
+        udf = udf.to(device, non_blocking=True)
+        surface = surface.to(device, non_blocking=True)
 
         points = points + global_offset
         surface = surface + global_offset
 
-        points = points.to(device, non_blocking=True)
-        udf = udf.to(device, non_blocking=True)
+        points = points * args.global_scale
+        surface = surface * args.global_scale
+        udf = udf * args.global_scale
+
         if args.mse_loss:
             labels = torch.clip(udf, 0, args.max_dist)
         else:
             labels = torch.clip(udf, 0, args.max_dist)
             labels = 1 - (labels / args.max_dist)
-        surface = surface.to(device, non_blocking=True)
         gt_grads = gt_grads.to(device)
 
         grads_mask = torch.bitwise_and(udf < args.max_dist*0.9, udf > 0.0001).reshape(*gt_grads.shape[:2])
@@ -352,11 +353,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             
                 if epoch > 0 and data_iter_step == 0:
                    try:
+                        coords_range = ((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0]))
                         verts, faces = get_mesh_from_udf(
                             udf_func=callable_udf_func,
-                            coords_range=(-1, 1),
+                            coords_range=coords_range,
                             max_dist=0.1,
-                            N=128,
+                            N=256,
                             use_fast_grid_filler=False,
                             th_alpha=1.05,
                             th_beta=1.75,
