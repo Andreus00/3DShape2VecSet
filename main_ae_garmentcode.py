@@ -37,6 +37,9 @@ def get_args_parser():
 
     parser.add_argument('--point_cloud_size', default=8192*2, type=int,
                         help='input size')
+    
+    parser.add_argument('--latent_vec_size', default=1024, type=int,
+                        help='input size')
 
     parser.add_argument('--num_samples', default=8192*8, type=int,
                         help='input size')
@@ -68,6 +71,12 @@ def get_args_parser():
 
     parser.add_argument('--min_lr', type=float, default=1e-8, metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0')
+    
+
+    parser.add_argument('--kl_weight', type=float, default=1e-4, metavar='LR',
+                        help='Weight for the KL divergence loss')
+    parser.add_argument('--grad_weight', type=float, default=1e-2, metavar='LR',
+                        help='Weight for the gradient loss')
 
     parser.add_argument('--warmup_epochs', type=int, default=40, metavar='N',
                         help='epochs to warmup LR')
@@ -194,7 +203,7 @@ def main(args):
         drop_last=False
     )
     
-    model = models_ae.__dict__[args.model](N=args.point_cloud_size)
+    model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_size)
     model.to(device)
 
     model_without_ddp = model
