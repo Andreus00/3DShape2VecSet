@@ -86,7 +86,7 @@ def get_args_parser():
                         help='Perform evaluation only')
     parser.add_argument('--dist_eval', action='store_true', default=False,
                         help='Enabling distributed evaluation (recommended during training for faster monitor')
-    parser.add_argument('--num_workers', default=2, type=int)
+    parser.add_argument('--num_workers', default=8, type=int)
     parser.add_argument('--pin_mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
@@ -99,12 +99,16 @@ def get_args_parser():
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
+    
+    # additional parameters
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--save_every', default=50, type=int, help='Saving iterval')
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
     parser.add_argument('--mse_loss', action='store_true', help='Use MSE loss instead of BCEWithLogitsLoss')
 
+    parser.add_argument('--limit', default=None, type=int, help='Limit the number of samples in the dataset. Useful for debugging.')
+    parser.add_argument('--replica', default=0, type=int, help='How many replicas to use for the dataset.')
 
     parser.add_argument('--test_dummy_sphere', action='store_true', help='Replace training and testing data with a sphere')
     parser.add_argument('--single_garment_overfit', action='store_true', help='Replace training and testing data with the first garment in the dataset')
