@@ -133,6 +133,11 @@ def get_args_parser():
     parser.add_argument('--body_model_normalization', action='store_true', help='Use body model normalization')
     parser.add_argument('--body_model_normalization_alpha', type=float, default=0.5, help='Body model normalization value used to scale the body model')
 
+    parser.add_argument('--global_scaler', type=float, default=1.0, help='Global scaler for the points')
+    parser.add_argument('--global_offset_x', type=float, default=0.0, help='Global x offset for the points')
+    parser.add_argument('--global_offset_y', type=float, default=0.0, help='Global y offset for the points')
+    parser.add_argument('--global_offset_z', type=float, default=0.0, help='Global z offset for the points')
+
     return parser
 
 def main(args):

@@ -312,9 +312,9 @@ class GarmentCode(data.Dataset):
         self.surf_imp_percent = surf_imp_percent
         self.surf_rnd_percent = 1 - (self.surf_bnd_percent + self.surf_imp_percent)
 
-        self.n_surf_bnd_pts = self.pc_size * self.surf_bnd_percent
-        self.n_surf_imp_pts = self.pc_size * self.surf_imp_percent
-        self.n_surf_rnd_pts = self.pc_size * self.surf_rnd_percent
+        self.n_surf_bnd_pts = int(self.pc_size * self.surf_bnd_percent)
+        self.n_surf_imp_pts = int(self.pc_size * self.surf_imp_percent)
+        self.n_surf_rnd_pts = int(self.pc_size * self.surf_rnd_percent)
 
         self.test_dummy_sphere = test_dummy_sphere
         self.single_garment_overfit = single_garment_overfit

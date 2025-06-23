@@ -94,11 +94,21 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         print('log_dir: {}'.format(log_writer.log_dir))
 
     logging_dict = {"epoch": epoch}
+    global_offset = [args.global_offset_x, args.global_offset_y, args.global_offset_z]
+    global_offset = torch.tensor(global_offset, dtype=torch.float32, device=device)
+
     for data_iter_step, (points, udf, surface, gt_grads, _) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 #        print(data_iter_step)
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
+        
+        points = points * args.global_scale
+        surface = surface * args.global_scale
+        udf = udf * args.global_scale
+
+        points = points + global_offset
+        surface = surface + global_offset
 
         points = points.to(device, non_blocking=True)
         udf = udf.to(device, non_blocking=True)
