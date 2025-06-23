@@ -93,7 +93,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
 
-    logging_dict = {}
+    logging_dict = {"epoch": epoch}
     for data_iter_step, (points, udf, surface, gt_grads, _) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 #        print(data_iter_step)
         # we use a per iteration (instead of per epoch) lr scheduler
@@ -450,7 +450,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     logging_dict.update({f"epoch/{k}":v.global_avg for k, v in metric_logger.meters.items()})
-    wandb.log(logging_dict, step=epoch)
+    wandb.log(logging_dict)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
