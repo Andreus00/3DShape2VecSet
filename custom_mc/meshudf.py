@@ -367,7 +367,7 @@ def get_mesh_from_udf(
         - Faces of the mesh.
     """
     # th_dist is the threshold udf to consider a point on the surface.
-    th_dist = (1 / N) * 4
+    th_dist = (1 / N) * 5
     # sample udf grid
     if not use_fast_grid_filler:
         udf, gradients = get_udf_and_grads(
