@@ -288,7 +288,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False, limit=None):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False, limit=None, surf_bnd_percent=0.25, surf_imp_percent=0.25):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -307,9 +307,14 @@ class GarmentCode(data.Dataset):
         self.n_near_pts = num_samples - (self.n_rnd_pts + self.n_sfc_pts)
 
         self.scaling = 1.5
-        self.n_surf_bnd_pts = self.pc_size // 4
-        self.n_surf_imp_pts = self.pc_size // 4
-        self.n_surf_rnd_pts = self.pc_size - (self.n_surf_bnd_pts + self.n_surf_imp_pts)
+
+        self.surf_bnd_percent = surf_bnd_percent
+        self.surf_imp_percent = surf_imp_percent
+        self.surf_rnd_percent = 1 - (self.surf_bnd_percent + self.surf_imp_percent)
+
+        self.n_surf_bnd_pts = self.pc_size * self.surf_bnd_percent
+        self.n_surf_imp_pts = self.pc_size * self.surf_imp_percent
+        self.n_surf_rnd_pts = self.pc_size * self.surf_rnd_percent
 
         self.test_dummy_sphere = test_dummy_sphere
         self.single_garment_overfit = single_garment_overfit

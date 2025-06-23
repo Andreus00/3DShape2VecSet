@@ -41,10 +41,17 @@ def get_args_parser():
     parser.add_argument('--num_samples', default=8192*8, type=int,
                         help='input size')
     
-    parser.add_argument('--random_samples_ratio', default=0.2, type=int,
-                        help='ratio of random points in a batch.')
-    parser.add_argument('--surface_samples_ratio', default=0.15, type=int,
-                        help='ratio of random points in a batch.')
+    # Deconding points parameters
+    parser.add_argument('--random_samples_ratio', default=0.2, type=float,
+                        help='ratio of random points for decoding.')
+    parser.add_argument('--surface_samples_ratio', default=0.15, type=float,
+                        help='ratio of importance sampled points for decoding.')
+    
+    # Encoding points parameters
+    parser.add_argument('--surf_bnd_percent', default=0.25, type=float,
+                        help='ratio of boudnary points for encoding.')
+    parser.add_argument('--surf_imp_percent', default=0.25, type=float,
+                        help='ratio of importance points for encoding.')
 
     # Optimizer parameters
     parser.add_argument('--clip_grad', type=float, default=None, metavar='NORM',
