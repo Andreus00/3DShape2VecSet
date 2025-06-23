@@ -87,8 +87,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     
     optimizer.zero_grad()
 
-    kl_weight = 1e-2
-    grad_weight = 1e-2
+    kl_weight = args.kl_weight
+    grad_weight = args.grad_weight
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
@@ -361,8 +361,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         print(f"Mesh exported at {p}")
                         scene = trimesh.Scene(mesh)
                         data = scene.save_image(resolution=(1080,1080))
-                        image = np.array(Image.open(io.BytesIO(data))) 
-                        image = Image.fromarray((image * 255).astype(np.uint8))
+                        image =Image.open(io.BytesIO(data))
+                        if image.mode != 'RGB':
+                            image = image.convert('RGB')
                         logging_dict["renders"] = wandb.Image(image, caption=f"reconstructed mesh")
                    except Exception as e:
                        print(e)
