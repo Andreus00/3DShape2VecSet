@@ -195,7 +195,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
     
     udf_path = os.path.join(subpath, f"{g}_udf.npz")
     
-    if os.path.exists(udf_path) and not force_occupancy:    # If the file exist, check its validity and return it if the check passes.
+    if os.path.exists(udf_path) and not force_occupancy and not (single_garment_overfit or test_dummy_sphere):    # If the file exist, check its validity and return it if the check passes.
         try:
             npz_data = None
             with np.load(udf_path, allow_pickle=True) as data:
