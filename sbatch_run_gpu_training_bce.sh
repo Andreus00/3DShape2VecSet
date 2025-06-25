@@ -29,6 +29,12 @@ source ~/.bashrc
 conda activate shape2vec
 # Compute Phase
 # srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
-srun env -u SLURM_PROCID python3 -m torch.distributed.launch --rdzv_endpoint=localhost:29399 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --device cuda --batch_size 2 --accum_iter 4 --max_dist 0.1 --warmup_epoch 0 --lr 0.00001 --save_every 1 --epochs 800 --output_dir output_bce --log_dir output_bce
+srun env -u SLURM_PROCID python3 -m torch.distributed.launch \
+	--rdzv_endpoint=localhost:29399 main_ae_garmentcode.py \
+	--data_path ../GarmentCode/garmentcodedata_v2 \
+	--device cuda --batch_size 2 --accum_iter 4 --latent_vec_num 1024 \
+	--latent_vec_dim 32 --max_dist 0.1 --warmup_epoch 0 --lr 0.00001 \
+	--save_every 1 --epochs 800 --output_dir output_bce --log_dir output_bce \
+	--resume output_bce/checkpoint-6.pth --start_epoch 7 --wandb_id run-7wuau5r3-history
 
 conda deactivate

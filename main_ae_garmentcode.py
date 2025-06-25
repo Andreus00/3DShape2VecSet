@@ -38,9 +38,10 @@ def get_args_parser():
     parser.add_argument('--point_cloud_size', default=8192*2, type=int,
                         help='input size')
     
-    parser.add_argument('--latent_vec_size', default=1024, type=int,
-                        help='input size')
-
+    parser.add_argument('--latent_vec_num', default=1024, type=int,
+                        help='Number of latent vectors')
+    parser.add_argument('--latent_vec_dim', default=32, type=int,
+                        help='Size of latent vectors')
     parser.add_argument('--num_samples', default=8192*8, type=int,
                         help='input size')
     
@@ -137,6 +138,8 @@ def get_args_parser():
     parser.add_argument('--global_offset_x', type=float, default=0.0, help='Global x offset for the points')
     parser.add_argument('--global_offset_y', type=float, default=0.0, help='Global y offset for the points')
     parser.add_argument('--global_offset_z', type=float, default=0.0, help='Global z offset for the points')
+    parser.add_argument('--wandb_id', default=None, type=str, help='Wandb run id')
+
 
     return parser
 
@@ -208,7 +211,7 @@ def main(args):
         drop_last=False
     )
     
-    model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_size)
+    model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim)
     model.to(device)
 
     model_without_ddp = model
@@ -260,7 +263,7 @@ def main(args):
     criterion_type = 'mse' if args.mse_loss else 'bce'
 
     project_name = f"3DShape2VecSet_{test_type}_{distrubuted_type}_{criterion_type}"
-    wandb.init(project=project_name, name=args.model, config=args)
+    wandb.init(project=project_name, name=args.model, config=args, id=args.wandb_id, resume="allow")
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:

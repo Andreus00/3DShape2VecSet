@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
 #SBATCH --partition=a100-galvani   # Which partition will run your job
-#SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
+#SBATCH --time=2-00:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
 #SBATCH --gres=gpu:4
 #SBATCH --output=./logs_ge_bce_no_bnd_no_sfc_scale_offset/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
@@ -26,11 +26,12 @@ pwd
 # - set environment variables
 # - determine commandline arguments for `srun` calls
 source ~/.bashrc
+
 conda activate shape2vec
 # Compute Phase
 # srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
 srun env -u SLURM_PROCID python3 -m torch.distributed.launch \
-    --rdzv_endpoint=localhost:29399 main_ae_garmentcode.py \
+    --rdzv_endpoint=localhost:29398 main_ae_garmentcode.py \
     --data_path ../GarmentCode/garmentcodedata_v2 \
     --device cuda \
     --batch_size 2 \
@@ -52,7 +53,7 @@ srun env -u SLURM_PROCID python3 -m torch.distributed.launch \
     --single_garment_overfit \
     --grad_weight 0.001 \
     --kl_weight 0.0001 \
-    --global_scaling 3 \
+    --global_scale 3 \
     --global_offset_x 1.0 \
     --global_offset_y 1.0 \
     --global_offset_z 1.0 \
