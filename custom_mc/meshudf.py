@@ -347,6 +347,7 @@ def get_mesh_from_udf(
     max_batch: int = 2**16,
     use_fast_grid_filler: bool = True,
     grad=True,
+    th_dist: float = None,
     device='cpu'
 ) -> Tuple[Tensor, Tensor]:
     """
@@ -367,7 +368,15 @@ def get_mesh_from_udf(
         - Faces of the mesh.
     """
     # th_dist is the threshold udf to consider a point on the surface.
-    th_dist = (1 / N) * 5
+    th_dist = th_dist if th_dist is not None else (1 / N) * 12
+    voxel_size = 2.0 / (N - 1) 
+    avg_cube_val_thresh = th_alpha * voxel_size
+    max_cube_val_thresh = th_beta * voxel_size
+    print("avg_cube_val_thresh:", avg_cube_val_thresh)
+    print("max_cube_val_thresh:", max_cube_val_thresh)
+
+
+    print(f"th_dist: {th_dist}")
     # sample udf grid
     if not use_fast_grid_filler:
         udf, gradients = get_udf_and_grads(

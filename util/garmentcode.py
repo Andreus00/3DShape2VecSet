@@ -341,6 +341,8 @@ class GarmentCode(data.Dataset):
                 self.mesh_folders = self.mesh_folders[split_idx:]
             if test_dummy_sphere or single_garment_overfit:
                 self.mesh_folders = self.mesh_folders[:1]
+                self.mesh_folders[0] = os.path.join(dataset_folder, "GarmentCodeData_v2", "garments_5000_0", "default_body", "data", "rand_ZTJFE9H3WI")
+
                 
         # Load mean body model
         self.mean_body_model: tri.Trimesh = tri.load(os.path.join(dataset_folder, 'neutral_body/mean_all.obj'))
