@@ -50,3 +50,21 @@ wandb: 🚀 View run at https://wandb.ai/SewingGaussians/3DShape2VecSet_single_g
 /home/ponsmoll/pba764/.conda/envs/shape2vec/lib/python3.9/site-packages/torch/autograd/graph.py:825: UserWarning: Attempting to run cuBLAS, but there was no current CUDA context! Attempting to set the primary context... (Triggered internally at /opt/conda/conda-bld/pytorch_1729647350383/work/aten/src/ATen/cuda/CublasHandlePool.cpp:135.)
   return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
 wandb: WARNING Tried to log to step 0 that is less than the current step 10922. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 1 that is less than the current step 21844. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 2 that is less than the current step 32766. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 3 that is less than the current step 43688. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 4 that is less than the current step 54610. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 5 that is less than the current step 65532. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 6 that is less than the current step 76454. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 7 that is less than the current step 87376. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 8 that is less than the current step 98298. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 9 that is less than the current step 109220. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 10 that is less than the current step 120142. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11 that is less than the current step 131064. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 12 that is less than the current step 141986. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 13 that is less than the current step 152908. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 14 that is less than the current step 163830. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 15 that is less than the current step 174752. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 1561415 ON galvani-cn218 CANCELLED AT 2025-06-22T15:56:19 DUE TO TIME LIMIT ***
+slurmstepd: error: *** STEP 1561415.0 ON galvani-cn218 CANCELLED AT 2025-06-22T15:56:19 DUE TO TIME LIMIT ***
