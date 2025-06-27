@@ -125,265 +125,267 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         
 
         with torch.cuda.amp.autocast(enabled=False):
-            outputs = model(surface, points, with_grads=True)
+            with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False):
 
-            # KL loss
-            if 'kl' in outputs and outputs['kl'] is not None:
-                loss_kl = outputs['kl']
-                loss_kl = torch.sum(loss_kl) / loss_kl.shape[0]
-            else:
-                loss_kl = None
-            
-            # Gradients loss
-            if 'grads' in outputs:
-                if args.mse_loss:
-                    grads = outputs['grads']    # if mse_loss, grads are already in the right direction
+                outputs = model(surface, points, with_grads=True)
+
+                # KL loss
+                if 'kl' in outputs and outputs['kl'] is not None:
+                    loss_kl = outputs['kl']
+                    loss_kl = torch.sum(loss_kl) / loss_kl.shape[0]
                 else:
-                    grads = -outputs['grads']   # if sigmoid loss, grads are in the opposite direction
-                loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()
-            else:
-                loss_grads = None
-
-            # Point-wise Loss
-            logits = outputs['logits']
-
-            loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
-            loss_rand = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
-            loss_srf = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
-
-            loss = loss_near + loss_rand + loss_srf
-
-            if data_iter_step == 0:
-
-                if PLOT:
-                    
-                    sampled_points = points[0].cpu().detach().numpy()
-                    if args.mse_loss:
-                        sampled_labels = logits[0].detach().cpu().numpy()
-                    else:
-                        sampled_labels = torch.sigmoid(logits[0]).detach().cpu().numpy()
-                    
-                    ax1.cla()
-                    sc1 = ax1.scatter(
-                        sampled_points[:, 0],
-                        sampled_points[:, 1],
-                        sampled_points[:, 2],
-                        c=sampled_labels,
-                        cmap='viridis',
-                        s=1
-                    )
-
-                    error_labels = np.abs(sampled_labels - labels[0].flatten().detach().cpu().numpy()) 
-                    ax2.cla()
-                    sc2 = ax2.scatter(
-                        sampled_points[:, 0],
-                        sampled_points[:, 1],
-                        sampled_points[:, 2],
-                        c=error_labels,
-                        cmap='viridis',
-                        s=1
-                    )
-
-                    true_labels = labels[0].detach().cpu().numpy()
-                    ax3.cla()
-                    sc3 = ax3.scatter(
-                        sampled_points[:, 0],
-                        sampled_points[:, 1],
-                        sampled_points[:, 2],
-                        c=true_labels,
-                        cmap='viridis',
-                        s=1
-                    )
-                    ax4.cla()
-
-                    if 'grads' in outputs:
-                        sampled_points = points[grads_mask].reshape(-1, 3)
-                        pred_grads = grads[grads_mask].detach().cpu().numpy()
-                        gt_grads_np = gt_grads[grads_mask].detach().cpu().numpy()
-                        gt_udf = udf[grads_mask].detach().cpu().numpy()
-                        if args.mse_loss:
-                            pred_udf = logits[grads_mask].detach().cpu().numpy()
-                        else:
-                            pred_udf = ((1 - torch.sigmoid(logits[grads_mask])) * args.max_dist).detach().cpu().numpy()
-
-                        cos_dist_vals = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1))
-                        cos_dist_vals_np = cos_dist_vals.detach().cpu().numpy()
-                        sorted_indices = np.argsort(cos_dist_vals_np)
-                        num_grad_samples = min(1000, sampled_points.shape[0])
-
-                        sampled_points = sampled_points.cpu().detach().numpy() # [highest_indices]
-
-                        # Plot error (cos_dist_vals_np) vs gt_udf_highest as a scatter plot
-                        ax4.set_title("Cosine Distance vs UDF (Surface Proximity)")
-                        ax4.set_xlabel("GT UDF (Distance to Surface)")
-                        ax4.set_ylabel("Cosine Distance (Error)")
-                        # Clear previous 2D plot if any
-                        if hasattr(ax4, '_error_scatter'):
-                            ax4._error_scatter.remove()
-                        ax4._error_scatter = ax4.figure.add_axes([0.7, 0.1, 0.25, 0.25])
-                        ax4._error_scatter.cla()
-
-                        sc4 = ax4._error_scatter.scatter(gt_udf, cos_dist_vals_np, s=2, alpha=0.5, c='b')
-                        # sc4 = ax4._error_scatter.scatter(gt_udf, cos_dist_vals_np, s=2, alpha=0.5, c=err)
-                        ax4._error_scatter.set_xlabel("GT UDF")
-                        ax4._error_scatter.set_ylabel("Cosine Distance")
-                        ax4._error_scatter.set_title("Error vs UDF")
-                        ax4._error_scatter.grid(True)
-
-                        # Plot a central slice of the predicted UDF vs GT UDF
-                        # Assume points are in shape [N, 3], logits and labels are [N]
-                        # We'll plot points where z is close to the median z (central slice)
-                        z_vals = sampled_points[:, 2]
-                        z_center = np.median(z_vals)
-                        slice_thickness = 0.02  # adjust as needed
-                        slice_mask = np.abs(z_vals - z_center) < slice_thickness
-
-                        slice_points = sampled_points[slice_mask]
-                        
-                        slice_pred_udf = pred_udf[slice_mask]
-
-                        sc_pred = ax5.scatter(slice_points[:, 0], slice_points[:, 1], c=slice_pred_udf, cmap='viridis', s=2)
-                        ax5.set_title('Predicted UDF (central slice)')
-                        ax5.set_xlabel('X')
-                        ax5.set_ylabel('Y')
-
-                        plt.tight_layout()
-
-                        # Plot on ax6 some of the gradients whose error is high
-                        # Select gradients with highest cosine distance (error)
-                        num_grad_samples = min(200, sampled_points.shape[0])
-                        high_error_indices = sorted_indices[-num_grad_samples:]
-
-                        high_error_points = sampled_points[high_error_indices]
-                        high_error_pred_grads = pred_grads[high_error_indices]
-                        high_error_gt_grads = gt_grads_np[high_error_indices]
-                        high_error_vals = cos_dist_vals_np[high_error_indices]
-
-                        ax6.cla()
-                        ax6.set_title('High Error Gradients')
-                        ax6.set_xlabel('X')
-                        ax6.set_ylabel('Y')
-                        ax6.set_zlabel('Z')
-
-                        # Plot points colored by error
-                        sc6 = ax6.scatter(
-                            high_error_points[:, 0],
-                            high_error_points[:, 1],
-                            high_error_points[:, 2],
-                            c=high_error_vals,
-                            cmap='hot',
-                            s=8,
-                            alpha=0.8,
-                            label='High Error Points'
-                        )
-
-                        # Plot predicted gradients in blue
-                        ax6.quiver(
-                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
-                            high_error_pred_grads[:, 0], high_error_pred_grads[:, 1], high_error_pred_grads[:, 2],
-                            color='blue', length=0.05, normalize=True, label='Predicted'
-                        )
-                        # Plot GT gradients in red
-                        ax6.quiver(
-                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
-                            high_error_gt_grads[:, 0], high_error_gt_grads[:, 1], high_error_gt_grads[:, 2],
-                            color='red', length=0.05, normalize=True, label='GT'
-                        )
-
-                        surface_points = surface[0].cpu().detach().numpy()
-                        ax6.scatter(
-                            surface_points[:, 0],
-                            surface_points[:, 1],
-                            surface_points[:, 2],
-                            c='red',
-                            label='Surface Points'
-                        )
-                        ax6.scatter(
-                            high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
-                            color='blue', label='high_error_points'
-                        )
-
-                    
-                    if epoch == 1 and data_iter_step == 0:
-                        plt.colorbar(sc1, label='Labels')
-                        plt.colorbar(sc2, label='Labels')
-                        plt.colorbar(sc3, label='Labels')
-                        plt.colorbar(sc4, label='Gradient Cos Dist')
-                        plt.colorbar(sc6, ax=ax6, label='Cosine Distance (Error)')
-
-                    plt.draw()
-                    plt.pause(1.5)
-
-                if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-                    model = model.module
-                latent = model(surface[:1], None, only_encode=True)[1]
-
-                def callable_udf_func(x, udf_th):
-                    with torch.no_grad():
-                        x_nograd = x.clone().detach().to(device).unsqueeze(0)
-                        if args.mse_loss:
-                            udf = model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten()
-                        else:
-                            udf = (1 - torch.nn.functional.sigmoid(model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten())) * args.max_dist
-
-                    grad = torch.zeros_like(x, device=x.device)
-                    mask = udf < udf_th
-
-                    if mask.sum() > 0:
-                        x_grad = x[mask].clone().detach().requires_grad_(True).unsqueeze(0)
-                        udf_grad = model(latent.detach(), x_grad, only_decode=True)['logits'].flatten()
-                        grad_outputs = torch.ones_like(udf_grad)
-                        grads = torch.autograd.grad(
-                            outputs=udf_grad,
-                            inputs=x_grad,
-                            grad_outputs=grad_outputs,
-                            create_graph=False,
-                            retain_graph=False,
-                            only_inputs=True,
-                            allow_unused=True
-                        )[0]
-
-                        if args.mse_loss: # invert grads if using mse loss as they are opposite to the surface
-                            grads = -grads
-
-                        grad[mask] = grads
-                    
-                    return udf, grad.detach()
+                    loss_kl = None
                 
-            
-                if epoch > 0 and data_iter_step == 0:
-                   try:
-                        coords_range = ((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0]))
-                        verts, faces = get_mesh_from_udf(
-                            udf_func=callable_udf_func,
-                            coords_range=coords_range,
-                            max_dist=0.1,
-                            N=256,
-                            use_fast_grid_filler=False,
-                            th_alpha=1.05,
-                            th_beta=1.75,
-                            device=device
+                # Gradients loss
+                if 'grads' in outputs:
+                    if args.mse_loss:
+                        grads = outputs['grads']    # if mse_loss, grads are already in the right direction
+                    else:
+                        grads = -outputs['grads']   # if sigmoid loss, grads are in the opposite direction
+                    loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()
+                else:
+                    loss_grads = None
+
+                # Point-wise Loss
+                logits = outputs['logits']
+
+                loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
+                loss_rand = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
+                loss_srf = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
+
+                loss = loss_near + loss_rand + loss_srf
+
+                if data_iter_step == 0:
+
+                    if PLOT:
+                        
+                        sampled_points = points[0].cpu().detach().numpy()
+                        if args.mse_loss:
+                            sampled_labels = logits[0].detach().cpu().numpy()
+                        else:
+                            sampled_labels = torch.sigmoid(logits[0]).detach().cpu().numpy()
+                        
+                        ax1.cla()
+                        sc1 = ax1.scatter(
+                            sampled_points[:, 0],
+                            sampled_points[:, 1],
+                            sampled_points[:, 2],
+                            c=sampled_labels,
+                            cmap='viridis',
+                            s=1
                         )
 
-                        mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
-                        p = f'{args.output_dir}_mesh/final_{epoch}_{data_iter_step}.obj'
-                        if not os.path.exists(os.path.dirname(p)):
-                            os.makedirs(os.path.dirname(p))
-                        mesh.export(p, file_type='obj')
-                        print(f"Mesh exported at {p}")
-                        scene = trimesh.Scene(mesh)
-                        data = scene.save_image(resolution=(1080,1080))
-                        image =Image.open(io.BytesIO(data))
-                        if image.mode != 'RGB':
-                            image = image.convert('RGB')
-                        logging_dict["renders"] = wandb.Image(image, caption=f"reconstructed mesh")
-                   except Exception as e:
-                       print(e)
+                        error_labels = np.abs(sampled_labels - labels[0].flatten().detach().cpu().numpy()) 
+                        ax2.cla()
+                        sc2 = ax2.scatter(
+                            sampled_points[:, 0],
+                            sampled_points[:, 1],
+                            sampled_points[:, 2],
+                            c=error_labels,
+                            cmap='viridis',
+                            s=1
+                        )
 
-            if loss_kl is not None:
-                loss = loss + kl_weight * loss_kl
-            if loss_grads is not None:
-                loss = loss + grad_weight * loss_grads
+                        true_labels = labels[0].detach().cpu().numpy()
+                        ax3.cla()
+                        sc3 = ax3.scatter(
+                            sampled_points[:, 0],
+                            sampled_points[:, 1],
+                            sampled_points[:, 2],
+                            c=true_labels,
+                            cmap='viridis',
+                            s=1
+                        )
+                        ax4.cla()
+
+                        if 'grads' in outputs:
+                            sampled_points = points[grads_mask].reshape(-1, 3)
+                            pred_grads = grads[grads_mask].detach().cpu().numpy()
+                            gt_grads_np = gt_grads[grads_mask].detach().cpu().numpy()
+                            gt_udf = udf[grads_mask].detach().cpu().numpy()
+                            if args.mse_loss:
+                                pred_udf = logits[grads_mask].detach().cpu().numpy()
+                            else:
+                                pred_udf = ((1 - torch.sigmoid(logits[grads_mask])) * args.max_dist).detach().cpu().numpy()
+
+                            cos_dist_vals = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1))
+                            cos_dist_vals_np = cos_dist_vals.detach().cpu().numpy()
+                            sorted_indices = np.argsort(cos_dist_vals_np)
+                            num_grad_samples = min(1000, sampled_points.shape[0])
+
+                            sampled_points = sampled_points.cpu().detach().numpy() # [highest_indices]
+
+                            # Plot error (cos_dist_vals_np) vs gt_udf_highest as a scatter plot
+                            ax4.set_title("Cosine Distance vs UDF (Surface Proximity)")
+                            ax4.set_xlabel("GT UDF (Distance to Surface)")
+                            ax4.set_ylabel("Cosine Distance (Error)")
+                            # Clear previous 2D plot if any
+                            if hasattr(ax4, '_error_scatter'):
+                                ax4._error_scatter.remove()
+                            ax4._error_scatter = ax4.figure.add_axes([0.7, 0.1, 0.25, 0.25])
+                            ax4._error_scatter.cla()
+
+                            sc4 = ax4._error_scatter.scatter(gt_udf, cos_dist_vals_np, s=2, alpha=0.5, c='b')
+                            # sc4 = ax4._error_scatter.scatter(gt_udf, cos_dist_vals_np, s=2, alpha=0.5, c=err)
+                            ax4._error_scatter.set_xlabel("GT UDF")
+                            ax4._error_scatter.set_ylabel("Cosine Distance")
+                            ax4._error_scatter.set_title("Error vs UDF")
+                            ax4._error_scatter.grid(True)
+
+                            # Plot a central slice of the predicted UDF vs GT UDF
+                            # Assume points are in shape [N, 3], logits and labels are [N]
+                            # We'll plot points where z is close to the median z (central slice)
+                            z_vals = sampled_points[:, 2]
+                            z_center = np.median(z_vals)
+                            slice_thickness = 0.02  # adjust as needed
+                            slice_mask = np.abs(z_vals - z_center) < slice_thickness
+
+                            slice_points = sampled_points[slice_mask]
+                            
+                            slice_pred_udf = pred_udf[slice_mask]
+
+                            sc_pred = ax5.scatter(slice_points[:, 0], slice_points[:, 1], c=slice_pred_udf, cmap='viridis', s=2)
+                            ax5.set_title('Predicted UDF (central slice)')
+                            ax5.set_xlabel('X')
+                            ax5.set_ylabel('Y')
+
+                            plt.tight_layout()
+
+                            # Plot on ax6 some of the gradients whose error is high
+                            # Select gradients with highest cosine distance (error)
+                            num_grad_samples = min(200, sampled_points.shape[0])
+                            high_error_indices = sorted_indices[-num_grad_samples:]
+
+                            high_error_points = sampled_points[high_error_indices]
+                            high_error_pred_grads = pred_grads[high_error_indices]
+                            high_error_gt_grads = gt_grads_np[high_error_indices]
+                            high_error_vals = cos_dist_vals_np[high_error_indices]
+
+                            ax6.cla()
+                            ax6.set_title('High Error Gradients')
+                            ax6.set_xlabel('X')
+                            ax6.set_ylabel('Y')
+                            ax6.set_zlabel('Z')
+
+                            # Plot points colored by error
+                            sc6 = ax6.scatter(
+                                high_error_points[:, 0],
+                                high_error_points[:, 1],
+                                high_error_points[:, 2],
+                                c=high_error_vals,
+                                cmap='hot',
+                                s=8,
+                                alpha=0.8,
+                                label='High Error Points'
+                            )
+
+                            # Plot predicted gradients in blue
+                            ax6.quiver(
+                                high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                                high_error_pred_grads[:, 0], high_error_pred_grads[:, 1], high_error_pred_grads[:, 2],
+                                color='blue', length=0.05, normalize=True, label='Predicted'
+                            )
+                            # Plot GT gradients in red
+                            ax6.quiver(
+                                high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                                high_error_gt_grads[:, 0], high_error_gt_grads[:, 1], high_error_gt_grads[:, 2],
+                                color='red', length=0.05, normalize=True, label='GT'
+                            )
+
+                            surface_points = surface[0].cpu().detach().numpy()
+                            ax6.scatter(
+                                surface_points[:, 0],
+                                surface_points[:, 1],
+                                surface_points[:, 2],
+                                c='red',
+                                label='Surface Points'
+                            )
+                            ax6.scatter(
+                                high_error_points[:, 0], high_error_points[:, 1], high_error_points[:, 2],
+                                color='blue', label='high_error_points'
+                            )
+
+                        
+                        if epoch == 1 and data_iter_step == 0:
+                            plt.colorbar(sc1, label='Labels')
+                            plt.colorbar(sc2, label='Labels')
+                            plt.colorbar(sc3, label='Labels')
+                            plt.colorbar(sc4, label='Gradient Cos Dist')
+                            plt.colorbar(sc6, ax=ax6, label='Cosine Distance (Error)')
+
+                        plt.draw()
+                        plt.pause(1.5)
+
+                    if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+                        model = model.module
+                    latent = model(surface[:1], None, only_encode=True)[1]
+
+                    def callable_udf_func(x, udf_th):
+                        with torch.no_grad():
+                            x_nograd = x.clone().detach().to(device).unsqueeze(0)
+                            if args.mse_loss:
+                                udf = model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten()
+                            else:
+                                udf = (1 - torch.nn.functional.sigmoid(model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten())) * args.max_dist
+
+                        grad = torch.zeros_like(x, device=x.device)
+                        mask = udf < udf_th
+
+                        if mask.sum() > 0:
+                            x_grad = x[mask].clone().detach().requires_grad_(True).unsqueeze(0)
+                            udf_grad = model(latent.detach(), x_grad, only_decode=True)['logits'].flatten()
+                            grad_outputs = torch.ones_like(udf_grad)
+                            grads = torch.autograd.grad(
+                                outputs=udf_grad,
+                                inputs=x_grad,
+                                grad_outputs=grad_outputs,
+                                create_graph=False,
+                                retain_graph=False,
+                                only_inputs=True,
+                                allow_unused=True
+                            )[0]
+
+                            if args.mse_loss: # invert grads if using mse loss as they are opposite to the surface
+                                grads = -grads
+
+                            grad[mask] = grads
+                        
+                        return udf, grad.detach()
+                    
+                
+                    if epoch > 0 and data_iter_step == 0:
+                        try:
+                                coords_range = ((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0]))
+                                verts, faces = get_mesh_from_udf(
+                                    udf_func=callable_udf_func,
+                                    coords_range=coords_range,
+                                    max_dist=0.1,
+                                    N=256,
+                                    use_fast_grid_filler=False,
+                                    th_alpha=1.05,
+                                    th_beta=1.75,
+                                    device=device
+                                )
+
+                                mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
+                                p = f'{args.output_dir}_mesh/final_{epoch}_{data_iter_step}.obj'
+                                if not os.path.exists(os.path.dirname(p)):
+                                    os.makedirs(os.path.dirname(p))
+                                mesh.export(p, file_type='obj')
+                                print(f"Mesh exported at {p}")
+                                scene = trimesh.Scene(mesh)
+                                data = scene.save_image(resolution=(1080,1080))
+                                image =Image.open(io.BytesIO(data))
+                                if image.mode != 'RGB':
+                                    image = image.convert('RGB')
+                                logging_dict["renders"] = wandb.Image(image, caption=f"reconstructed mesh")
+                        except Exception as e:
+                            print(e)
+
+                if loss_kl is not None:
+                    loss = loss + kl_weight * loss_kl
+                if loss_grads is not None:
+                    loss = loss + grad_weight * loss_grads
 
         loss_value = loss.item()
 
