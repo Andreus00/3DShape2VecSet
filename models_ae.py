@@ -748,6 +748,27 @@ def kl_garments(N=8192, M=512, D=32):
     return create_autoencoder(dim=512, M=M, latent_dim=D, N=N, determinisitc=False, v2=True)
 
 
+def hunyuan_garments(N=4096*10, M=4096*10, D=1.0):
+    from hunyuan_model.model import ShapeVAE
+    return ShapeVAE(
+        num_latents=4096,
+        embed_dim=64,
+        num_freqs=8,
+        include_pi=False,
+        heads=16,
+        width=1024,
+        num_encoder_layers=8,
+        num_decoder_layers=16,
+        qkv_bias=False,
+        qk_norm=True,
+        scale_factor=D,  # Make sure z_scale_factor is defined
+        geo_decoder_mlp_expand_ratio=4,
+        geo_decoder_downsample_ratio=1,
+        geo_decoder_ln_post=True,
+        point_feats=0,
+        pc_size=N,  # Make sure pc_size is defined
+        pc_sharpedge_size=M  # Make sure pc_sharpedge_size is defined
+    )
 # test local
 # def kl_garments(N=8192):
 #     return create_autoencoder(dim=512, M=2048, latent_dim=16, N=N, determinisitc=False, v2=True)
