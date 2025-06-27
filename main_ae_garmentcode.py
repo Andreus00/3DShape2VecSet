@@ -140,7 +140,6 @@ def get_args_parser():
     parser.add_argument('--global_offset_z', type=float, default=0.0, help='Global z offset for the points')
     parser.add_argument('--wandb_id', default=None, type=str, help='Wandb run id')
 
-
     return parser
 
 def main(args):
@@ -210,8 +209,12 @@ def main(args):
         pin_memory=args.pin_mem,
         drop_last=False
     )
+
     
-    model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim)
+    if args.model.startswith('hunyuan'):
+        model = models_ae.__dict__[args.model](N=args.point_cloud_size//2, M=args.point_cloud_size//2, D=1.)
+    else:
+        model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim)
     model.to(device)
 
     model_without_ddp = model
