@@ -368,7 +368,7 @@ def get_mesh_from_udf(
         - Faces of the mesh.
     """
     # th_dist is the threshold udf to consider a point on the surface.
-    th_dist = th_dist if th_dist is not None else (1 / N) * 12
+    th_dist = th_dist if th_dist is not None else (1 / N) * 3
     voxel_size = 2.0 / (N - 1) 
     avg_cube_val_thresh = th_alpha * voxel_size
     max_cube_val_thresh = th_beta * voxel_size
