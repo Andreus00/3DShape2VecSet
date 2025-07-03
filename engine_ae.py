@@ -103,16 +103,17 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
         
-        points = points.to(device, non_blocking=True)
-        udf = udf.to(device, non_blocking=True)
-        surface = surface.to(device, non_blocking=True)
+        points = points.to(device, non_blocking=True).to(torch.float16)
+        udf = udf.to(device, non_blocking=True).to(torch.float16)
+        surface = surface.to(device, non_blocking=True).to(torch.float16)
+        udf = udf.to(torch.float16)
 
-        points = points + global_offset
-        surface = surface + global_offset
+        # points = points + global_offset
+        # surface = surface + global_offset
 
-        points = points * args.global_scale
-        surface = surface * args.global_scale
-        udf = udf * args.global_scale
+        # points = points * args.global_scale
+        # surface = surface * args.global_scale
+        # udf = udf * args.global_scale
 
         if args.mse_loss:
             labels = torch.clip(udf, 0, args.max_dist)
@@ -128,7 +129,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         with torch.cuda.amp.autocast(enabled=False):
             with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False):
-
+                print(points, udf, surface, gt_grads)
                 outputs = model(surface, points, with_grads=with_grads)
 
                 # KL loss
@@ -151,13 +152,19 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 # Point-wise Loss
                 logits = outputs['logits']
 
-                loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
-                loss_rand = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
-                loss_srf = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
+                if args.model == "hunyuan_garments":
+                    loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
+                    loss_rand = criterion(logits[:, n_near_pts:], labels[:, n_near_pts:])
+                    loss_srf = None
+                    loss = loss_near + loss_rand
+                else:
+                    loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
+                    loss_rand = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
+                    loss_srf = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
 
-                loss = loss_near + loss_rand + loss_srf
+                    loss = loss_near + loss_rand + loss_srf
 
-                if data_iter_step == 0:
+                if data_iter_step == 0 and not args.model == "hunyuan_garments":
 
                     if PLOT:
                         
@@ -425,7 +432,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         logging_dict["batch/loss"] = loss_value
         logging_dict["batch/loss_near"] = loss_near.item()
         logging_dict["batch/loss_rand"] = loss_rand.item()
-        logging_dict["batch/loss_srf"] = loss_srf.item()
+        if loss_srf is not None:
+            logging_dict["batch/loss_srf"] = loss_srf.item()
         if loss_kl is not None:
             logging_dict["batch/loss_kl"] = loss_kl.item()
         if loss_grads is not None:

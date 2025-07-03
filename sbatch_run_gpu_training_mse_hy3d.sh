@@ -2,7 +2,7 @@
 
 # Sample Slurm job script for Galvani 
 
-#SBATCH -J ge-bce                  # Job name
+#SBATCH -J ge-mse                  # Job name
 #SBATCH --ntasks=1                 # Number of tasks
 #SBATCH --cpus-per-task=8          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
@@ -10,8 +10,8 @@
 #SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
 #SBATCH --gres=gpu:4
-#SBATCH --output=./logs_ge_bce_restart_2/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
-#SBATCH --error=./logs_ge_bce_restart_2/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
+#SBATCH --output=./logs_ge_mse_hy3d/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
+#SBATCH --error=./logs_ge_mse_hy3d/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=andrea.sanchietti@uni-tuebingen.de   # Email to which notifications will be sent
 
@@ -29,12 +29,14 @@ source ~/.bashrc
 conda activate shape2vec
 # Compute Phase
 # srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
-srun env -u SLURM_PROCID python3 -m torch.distributed.launch --nproc_per_node=4 \
-	--rdzv_endpoint=localhost:29399 main_ae_garmentcode.py \
-	--data_path ../GarmentCode/garmentcodedata_v2 \
-	--device cuda --batch_size 2 --accum_iter 4 --latent_vec_num 1024 \
-	--latent_vec_dim 32 --max_dist 0.1 --warmup_epoch 0 --lr 0.00001 \
-	--save_every 1 --epochs 800 --output_dir output_bce_restart_2 --log_dir output_bce_restart_2 \
-	--resume output_bce/checkpoint-13.pth --start_epoch 14 
+srun env -u SLURM_PROCID python3 -m torch.distributed.launch  --nproc_per_node=4 \
+    --rdzv_endpoint=localhost:29330 main_ae_garmentcode.py \
+    --data_path ../GarmentCode/garmentcodedata_v2 \
+    --device cuda --batch_size 1 --accum_iter 64 --latent_vec_num 4096 \
+    --latent_vec_dim 64 --max_dist 0.1 --warmup_epochs 0 --lr 0.00001 \
+    --save_every 1 --epochs 800 --output_dir output_mse_hy3d --log_dir output_mse_hy3d --mse_loss \
+    --point_cloud_size 81920 --num_workers 8 \
+    --grad_weight 0. --surf_imp_percent 0.5 --surf_bnd_percent 0. \
+    --surface_samples_ratio 0.0 --random_samples_ratio 0.5 --grad_weight 0.0 --model hunyuan_garments
 
 conda deactivate

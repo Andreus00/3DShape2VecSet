@@ -35,7 +35,7 @@ srun env -u SLURM_PROCID python3 -m torch.distributed.launch --nproc_per_node=4 
 	--device cuda --batch_size 1 --accum_iter 64 --latent_vec_num 4096 --mse_loss \
 	--latent_vec_dim 64 --max_dist 0.1 --warmup_epoch 0 --lr 0.00003 \
 	--save_every 1 --epochs 800 --output_dir output_mse_bigger --log_dir output_mse_bigger \
-	--point_cloud_size 32768 --num_workers 8 \
-	--grad_weight 0. --kl_weight 0.001 --surf_imp_percent 0.03125 --surf_bnd_percent 0.1 --weight_decay 0.001
+	--point_cloud_size 81920 --num_workers 8 \
+	--grad_weight 0. --kl_weight 0.001 --surf_imp_percent 0.03125 --surf_bnd_percent 0.03125 --weight_decay 0.001
 
 conda deactivate

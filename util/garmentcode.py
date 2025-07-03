@@ -237,11 +237,6 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
             os.remove(udf_path)
 
 
-    # mesh_o3d: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(model_file))
-    # shifts = (mesh_o3d.get_max_bound() + mesh_o3d.get_min_bound()) / 2
-    # mesh_o3d.translate((-shifts[0], -shifts[1], -shifts[2]))
-    # scale = (1 / np.abs(mesh_o3d.get_max_bound() - mesh_o3d.get_min_bound()).max()) * 1.9
-    # mesh_o3d.scale(scale, center=np.zeros((3, 1)))
     mesh_trimesh: tri.Trimesh = tri.load(str(model_file))
     if test_dummy_sphere:
         mesh_trimesh = tri.creation.icosphere(subdivisions=4, radius=1.0)
@@ -288,7 +283,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
 class GarmentCode(data.Dataset):
 
-    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False, limit=None, surf_bnd_percent=0.25, surf_imp_percent=0.25):
+    def __init__(self, dataset_folder, split, force_occupancy=False, transform=None, sampling=True, num_samples=10_000, return_surface=True, surface_sampling=True, pc_size=4096, replica=1, max_dist=0.1, body_model_normalization=False, body_model_normalization_alpha=0.5, random_samples_ratio=0.5, surface_samples_ratio=0.2, test_dummy_sphere=False, single_garment_overfit=False, limit=None, surf_bnd_percent=0.25, surf_imp_percent=0.25, args=None):
         self.pc_size = pc_size
         self.transform = transform
         self.num_samples = num_samples
@@ -318,6 +313,8 @@ class GarmentCode(data.Dataset):
 
         self.test_dummy_sphere = test_dummy_sphere
         self.single_garment_overfit = single_garment_overfit
+
+        self.hunyuan = args.model == "hunyuan_garments"
 
         # Load split file
         train_val_test_path = os.path.join(dataset_folder, 'GarmentCodeData_v2_official_train_valid_test_data_split.json')
@@ -409,7 +406,47 @@ class GarmentCode(data.Dataset):
                 print(e)
                 print(point_path)
 
+        if self.hunyuan:
+            # Sample random indices from surface and importance points
+            idxs_surface = np.random.default_rng().choice(sfc.shape[0], self.n_surf_rnd_pts, replace=False)
+            idxs_importance = np.random.default_rng().choice(importance_points.shape[0], self.n_surf_imp_pts, replace=False)
+
+            # Gather points and corresponding gradients
+            surface_points = torch.from_numpy(sfc[idxs_surface]).float()
+            importance_points_sampled = torch.from_numpy(importance_points[idxs_importance]).float()
+            surface_grads_sampled = torch.from_numpy(sfc_grads[idxs_surface]).float()
+            importance_grads_sampled = torch.from_numpy(importance_grad[idxs_importance]).float()
+
+            # Concatenate points and gradients
+            surface_data = torch.cat([surface_points, surface_grads_sampled, torch.zeros((surface_points.shape[0], 1))], dim=-1)
+            importance_data = torch.cat([importance_points_sampled, importance_grads_sampled, torch.ones((importance_points_sampled.shape[0], 1))], dim=-1)
+
+            surface = torch.cat([surface_data, importance_data], dim=0)
+
+
+            idxs_near = np.random.default_rng().choice(points_near.shape[0], self.n_near_pts, replace=False)
+            idxs_rand = np.random.default_rng().choice(points_rand.shape[0], self.n_rnd_pts, replace=False)
+            # idxs_sfc = np.random.default_rng().choice(sfc.shape[0], self.n_sfc_pts, replace=False)
+            points_near = points_near[idxs_near]
+            udf_near = udf_near[idxs_near]
+            points_rand = points_rand[idxs_rand]
+            udf_rand = udf_rand[idxs_rand]
+            # points_sfc = sfc[idxs_sfc]
+            # udf_sfc = np.zeros((points_sfc.shape[0],))
+            grads_near = gradients_near[idxs_near]
+            grads_rand = gradients_rand[idxs_rand]
+            # grads_sfc = sfc_grads[idxs_sfc]
+            # points = np.concatenate([points_near, points_rand, points_sfc])
+            # udf = np.concatenate([udf_near, udf_rand, udf_sfc])
+            # grads = np.concatenate([grads_near, grads_rand, grads_sfc])
+            points = np.concatenate([points_near, points_rand])
+            udf = np.concatenate([udf_near, udf_rand])
+            grads = np.concatenate([grads_near, grads_rand])
+
+            return points, udf, surface, grads, 0
+
         if self.return_surface:
+            
             if self.surface_sampling:
                 idxs = np.random.default_rng().choice(sfc.shape[0], self.n_surf_rnd_pts, replace=False)
                 idxs_importance = np.random.default_rng().choice(importance_points.shape[0], self.n_surf_imp_pts, replace=False)
@@ -422,6 +459,7 @@ class GarmentCode(data.Dataset):
 
         if self.sampling:
             idxs_near = np.random.default_rng().choice(points_near.shape[0], self.n_near_pts, replace=False)
+            print(points_rand.shape, self.n_rnd_pts, self.num_samples)
             idxs_rand = np.random.default_rng().choice(points_rand.shape[0], self.n_rnd_pts, replace=False)
             idxs_sfc = np.random.default_rng().choice(sfc.shape[0], self.n_sfc_pts, replace=False)
             points_near = points_near[idxs_near]

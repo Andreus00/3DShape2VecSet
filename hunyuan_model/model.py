@@ -284,7 +284,7 @@ class ShapeVAE(VectsetVAE):
         num_encoder_layers: int = 8,
         pc_size: int = 5120,
         pc_sharpedge_size: int = 5120,
-        point_feats: int = 0,
+        point_feats: int = 3,
         downsample_ratio: int = 20,
         geo_decoder_downsample_ratio: int = 1,
         geo_decoder_mlp_expand_ratio: int = 4,
@@ -298,7 +298,7 @@ class ShapeVAE(VectsetVAE):
         scale_factor: float = 1.0,
         use_ln_post: bool = True,
         ckpt_path = None,
-        has_features: bool = False,
+        has_features: bool = True,
     ):
         super().__init__()
         self.geo_decoder_ln_post = geo_decoder_ln_post
@@ -406,7 +406,7 @@ class ShapeVAE(VectsetVAE):
         return udf, grads
     
 
-    def forward(self, pc, queries, with_grads=True, only_encode=False, only_decode=False):
+    def forward(self, pc, queries, with_grads=False, only_encode=False, only_decode=False):
         if only_decode:
             # pc = latents
             o = self.decode(pc, queries).squeeze(-1)

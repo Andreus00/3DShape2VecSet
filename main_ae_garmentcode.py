@@ -211,8 +211,8 @@ def main(args):
     )
 
     
-    if args.model.startswith('hunyuan'):
-        model = models_ae.__dict__[args.model](N=args.point_cloud_size//2, M=args.point_cloud_size//2, D=1.)
+    if args.model.startswith('hunyuan_garments'):
+        model = models_ae.__dict__[args.model]()
     else:
         model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim)
     model.to(device)
