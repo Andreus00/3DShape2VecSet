@@ -37,6 +37,6 @@ srun env -u SLURM_PROCID python3 -m torch.distributed.launch  --nproc_per_node=4
     --save_every 1 --epochs 800 --output_dir output_mse_hy3d --log_dir output_mse_hy3d --mse_loss \
     --point_cloud_size 81920 --num_workers 8 \
     --grad_weight 0. --surf_imp_percent 0.5 --surf_bnd_percent 0. \
-    --surface_samples_ratio 0.0 --random_samples_ratio 0.5 --grad_weight 0.0 --model hunyuan_garments
+    --surface_samples_ratio 0.0 --random_samples_ratio 0.25 --grad_weight 0.0 --model hunyuan_garments
 
 conda deactivate
