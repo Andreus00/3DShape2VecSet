@@ -124,10 +124,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         grads_mask = torch.bitwise_and(udf < args.max_dist*0.9, udf > 0.0001).reshape(*gt_grads.shape[:2])
         
 
+        with_grads = args.grad_weight > 0.0
+
         with torch.cuda.amp.autocast(enabled=False):
             with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False):
 
-                outputs = model(surface, points, with_grads=True)
+                outputs = model(surface, points, with_grads=with_grads)
 
                 # KL loss
                 if 'kl' in outputs and outputs['kl'] is not None:
@@ -318,6 +320,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
                     if isinstance(model, torch.nn.parallel.DistributedDataParallel):
                         model = model.module
+
                     latent = model(surface[:1], None, only_encode=True)[1]
 
                     def callable_udf_func(x, udf_th):
@@ -355,7 +358,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 
                     if epoch > 0 and data_iter_step == 0:
                         try:
-                                coords_range = ((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0]))
+                                coords_range = torch.asarray(((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0])), device='cpu')
                                 verts, faces = get_mesh_from_udf(
                                     udf_func=callable_udf_func,
                                     coords_range=coords_range,
