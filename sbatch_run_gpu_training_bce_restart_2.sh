@@ -10,8 +10,8 @@
 #SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
 #SBATCH --gres=gpu:4
-#SBATCH --output=./logs_ge_bce/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
-#SBATCH --error=./logs_ge_bce/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
+#SBATCH --output=./logs_ge_bce_restart_2/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
+#SBATCH --error=./logs_ge_bce_restart_2/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=andrea.sanchietti@uni-tuebingen.de   # Email to which notifications will be sent
 
@@ -33,8 +33,8 @@ srun env -u SLURM_PROCID python3 -m torch.distributed.launch \
 	--rdzv_endpoint=localhost:29399 main_ae_garmentcode.py \
 	--data_path ../GarmentCode/garmentcodedata_v2 \
 	--device cuda --batch_size 2 --accum_iter 4 --latent_vec_num 1024 \
-	--latent_vec_dim 32 --max_dist 0.1 --warmup_epoch 0 --lr 0.0001 \
-	--save_every 1 --epochs 800 --output_dir output_bce --log_dir output_bce \
+	--latent_vec_dim 32 --max_dist 0.1 --warmup_epoch 0 --lr 0.00001 \
+	--save_every 1 --epochs 800 --output_dir output_bce_restart_2 --log_dir output_bce_restart_2 \
 	--resume output_bce/checkpoint-13.pth --start_epoch 14 
 
 conda deactivate
