@@ -766,29 +766,6 @@ def hunyuan_garments(N=4096*10*2, M=4096, D=64, sharpedge_ratio=0.5):
     assert vae.downsample_ratio * vae.latent_shape[0] == N, f"{vae.downsample_ratio * vae.latent_shape} != {N}"
     return vae
 
-    # if N != M*10*2:
-    #     print(f"Forcing N to be {M}*10*2")
-    #     N = M*10*2
-    # from hunyuan_model.model import ShapeVAE
-    # return ShapeVAE(
-    #     num_latents=M,
-    #     embed_dim=64,
-    #     num_freqs=8,
-    #     include_pi=False,
-    #     heads=16,
-    #     width=1024,
-    #     num_encoder_layers=8,
-    #     num_decoder_layers=16,
-    #     qkv_bias=False,
-    #     qk_norm=True,
-    #     scale_factor=D,  # Make sure z_scale_factor is defined
-    #     geo_decoder_mlp_expand_ratio=4,
-    #     geo_decoder_downsample_ratio=1,
-    #     geo_decoder_ln_post=True,
-    #     point_feats=0,
-    #     pc_size=N,  # Make sure pc_size is defined
-    #     pc_sharpedge_size=M  # Make sure pc_sharpedge_size is defined
-    # )
 # test local
 # def kl_garments(N=8192):
 #     return create_autoencoder(dim=512, M=2048, latent_dim=16, N=N, determinisitc=False, v2=True)
