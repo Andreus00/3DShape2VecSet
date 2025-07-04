@@ -129,7 +129,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         with torch.cuda.amp.autocast(enabled=False):
             with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=True):
-                print(points, udf, surface, gt_grads)
+                # print(points, udf, surface, gt_grads)
                 outputs = model(surface, points, with_grads=with_grads)
 
                 # KL loss
