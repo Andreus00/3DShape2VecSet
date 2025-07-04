@@ -135,7 +135,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 if 'kl' in outputs and outputs['kl'] is not None:
                     loss_kl = outputs['kl']
                     loss_kl = kl_weight * (torch.sum(loss_kl) / loss_kl.shape[0])
-                    loss_kl.backward()
+                    loss_kl.backward(retain_graph=True)
                 else:
                     loss_kl = None
                 
@@ -146,7 +146,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     else:
                         grads = -outputs['grads']   # if sigmoid loss, grads are in the opposite direction
                     loss_grads = grad_weight * (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()
-                    loss_grads.backward()
+                    loss_grads.backward(retain_graph=True)
                 else:
                     loss_grads = None
 
