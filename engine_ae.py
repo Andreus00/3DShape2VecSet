@@ -447,7 +447,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         metric_logger.update(loss_near=loss_near.item())
         metric_logger.update(loss_rand=loss_rand.item())
-        metric_logger.update(loss_srf=loss_srf.item())
+        if loss_srf is not None:
+            metric_logger.update(loss_srf=loss_srf.item())
 
         if loss_kl is not None:
             metric_logger.update(loss_kl=loss_kl.item())
