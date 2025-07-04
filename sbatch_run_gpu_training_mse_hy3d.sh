@@ -10,8 +10,8 @@
 #SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
 #SBATCH --gres=gpu:4
-#SBATCH --output=./logs_ge_mse_hy3d_test100/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
-#SBATCH --error=./logs_ge_mse_hy3d_test100/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
+#SBATCH --output=./logs_ge_mse_hy3d/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
+#SBATCH --error=./logs_ge_mse_hy3d/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=andrea.sanchietti@uni-tuebingen.de   # Email to which notifications will be sent
 
@@ -32,11 +32,11 @@ conda activate shape2vec
 srun env -u SLURM_PROCID python3 -m torch.distributed.launch  --nproc_per_node=4 \
     --rdzv_endpoint=localhost:29330 main_ae_garmentcode.py \
     --data_path ../GarmentCode/garmentcodedata_v2 \
-    --device cuda --batch_size 1 --accum_iter 64 --latent_vec_num 4096 \
-    --latent_vec_dim 64 --max_dist 10 --warmup_epochs 0 --lr 0.00001 \
-    --save_every 1 --epochs 800 --output_dir output_mse_hy3d_test100 --log_dir output_mse_hy3d_test100 --mse_loss \
-    --point_cloud_size 81920 --num_workers 8 \
-    --grad_weight 0. --surf_imp_percent 0.5 --surf_bnd_percent 0. \
-    --surface_samples_ratio 0.0 --random_samples_ratio 0.25 --grad_weight 0.0 --model hunyuan_garments --limit 100
+    --device cuda --batch_size 1 --accum_iter 64 --latent_vec_num 4096 --max_dist 0.01\
+    --latent_vec_dim 64 --warmup_epochs 0 --lr 0.00001 \
+    --save_every 1 --epochs 800 --output_dir output_mse_hy3d --log_dir output_mse_hy3d --mse_loss \
+    --point_cloud_size 81920 --num_workers 4 \
+    --surf_imp_percent 0.45 --surf_bnd_percent 0.05 \
+    --surface_samples_ratio 0.0 --random_samples_ratio 0.25 --grad_weight 0.0 --model hunyuan_garments
 
 conda deactivate
