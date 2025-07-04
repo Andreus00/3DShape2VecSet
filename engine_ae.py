@@ -103,10 +103,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
         
-        points = points.to(device, non_blocking=True).to(torch.float16)
-        udf = udf.to(device, non_blocking=True).to(torch.float16)
-        surface = surface.to(device, non_blocking=True).to(torch.float16)
-        udf = udf.to(torch.float16)
+        points = points.to(device, non_blocking=True) #.to(torch.float16)
+        udf = udf.to(device, non_blocking=True) #.to(torch.float16)
+        surface = surface.to(device, non_blocking=True) #.to(torch.float16)
 
         # points = points + global_offset
         # surface = surface + global_offset
@@ -116,7 +115,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         # udf = udf * args.global_scale
 
         if args.mse_loss:
-            labels = torch.clip(udf, 0, args.max_dist)
+            labels = torch.clip(udf, 0, args.max_dist) / args.max_dist
         else:
             labels = torch.clip(udf, 0, args.max_dist)
             labels = 1 - (labels / args.max_dist)
@@ -166,9 +165,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 
                 
 
-                if data_iter_step == 0 and not args.model == "hunyuan_garments":
+                if data_iter_step % 20 == 0:
 
-                    if PLOT:
+                    if PLOT and not args.distributed:
                         
                         sampled_points = points[0].cpu().detach().numpy()
                         if args.mse_loss:
@@ -187,6 +186,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         )
 
                         error_labels = np.abs(sampled_labels - labels[0].flatten().detach().cpu().numpy()) 
+                        print("error_labels", error_labels[15:])
+                        print("sampled_labels", sampled_labels[15:])
+                        print("labels", labels[0, 15:])
                         ax2.cla()
                         sc2 = ax2.scatter(
                             sampled_points[:, 0],
@@ -321,8 +323,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                             plt.colorbar(sc1, label='Labels')
                             plt.colorbar(sc2, label='Labels')
                             plt.colorbar(sc3, label='Labels')
-                            plt.colorbar(sc4, label='Gradient Cos Dist')
-                            plt.colorbar(sc6, ax=ax6, label='Cosine Distance (Error)')
+                            if with_grads:
+                                plt.colorbar(sc4, label='Gradient Cos Dist')
+                                plt.colorbar(sc6, ax=ax6, label='Cosine Distance (Error)')
 
                         plt.draw()
                         plt.pause(1.5)
@@ -367,30 +370,30 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 
                     if epoch > 0 and data_iter_step == 0:
                         try:
-                                coords_range = torch.asarray(((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0])), device='cpu')
-                                verts, faces = get_mesh_from_udf(
-                                    udf_func=callable_udf_func,
-                                    coords_range=coords_range,
-                                    max_dist=0.1,
-                                    N=256,
-                                    use_fast_grid_filler=False,
-                                    th_alpha=1.05,
-                                    th_beta=1.75,
-                                    device=device
-                                )
+                            coords_range = torch.asarray(((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0])), device='cpu')
+                            verts, faces = get_mesh_from_udf(
+                                udf_func=callable_udf_func,
+                                coords_range=(-1, 1),
+                                max_dist=0.1,
+                                N=256,
+                                use_fast_grid_filler=False,
+                                th_alpha=1.05,
+                                th_beta=1.75,
+                                device=device
+                            )
 
-                                mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
-                                p = f'{args.output_dir}_mesh/final_{epoch}_{data_iter_step}.obj'
-                                if not os.path.exists(os.path.dirname(p)):
-                                    os.makedirs(os.path.dirname(p))
-                                mesh.export(p, file_type='obj')
-                                print(f"Mesh exported at {p}")
-                                scene = trimesh.Scene(mesh)
-                                data = scene.save_image(resolution=(1080,1080))
-                                image =Image.open(io.BytesIO(data))
-                                if image.mode != 'RGB':
-                                    image = image.convert('RGB')
-                                logging_dict["renders"] = wandb.Image(image, caption=f"reconstructed mesh")
+                            mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
+                            p = f'{args.output_dir}_mesh/final_{epoch}_{data_iter_step}.obj'
+                            if not os.path.exists(os.path.dirname(p)):
+                                os.makedirs(os.path.dirname(p))
+                            mesh.export(p, file_type='obj')
+                            print(f"Mesh exported at {p}")
+                            scene = trimesh.Scene(mesh)
+                            data = scene.save_image(resolution=(1080,1080))
+                            image =Image.open(io.BytesIO(data))
+                            if image.mode != 'RGB':
+                                image = image.convert('RGB')
+                            logging_dict["renders"] = wandb.Image(image, caption=f"reconstructed mesh")
                         except Exception as e:
                             print(e)
 

@@ -393,7 +393,7 @@ class ShapeVAE(VectsetVAE):
         """
         latents = self.post_kl(latents)
         latents = self.transformer(latents)
-        logits = self.geo_decoder(queries=queries, latents=latents)
+        logits = self.geo_decoder(queries=queries, latents=latents).abs()    # Changed to abs to remove sign
         return logits
     
     def decode_with_grad(self, latents, queries):
