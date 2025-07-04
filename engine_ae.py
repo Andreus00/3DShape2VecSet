@@ -186,9 +186,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         )
 
                         error_labels = np.abs(sampled_labels - labels[0].flatten().detach().cpu().numpy()) 
-                        print("error_labels", error_labels[15:])
-                        print("sampled_labels", sampled_labels[15:])
-                        print("labels", labels[0, 15:])
+
                         ax2.cla()
                         sc2 = ax2.scatter(
                             sampled_points[:, 0],
@@ -339,7 +337,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         with torch.no_grad():
                             x_nograd = x.clone().detach().to(device).unsqueeze(0)
                             if args.mse_loss:
-                                udf = model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten()
+                                udf = model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten() * args.max_dist
                             else:
                                 udf = (1 - torch.nn.functional.sigmoid(model(latent.detach(), x_nograd, only_decode=True)['logits'].flatten())) * args.max_dist
 
@@ -374,12 +372,19 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                             verts, faces = get_mesh_from_udf(
                                 udf_func=callable_udf_func,
                                 coords_range=(-1, 1),
-                                max_dist=0.1,
+                                # max_dist=0.1,
+                                # N=256,
+                                # th_dist= 0.01,
+                                # use_fast_grid_filler=False,
+                                # th_alpha=1.65,
+                                # th_beta=1.75,
+                                device=device,
+                                max_dist=args.max_dist,
                                 N=256,
                                 use_fast_grid_filler=False,
+                                th_dist=args.max_dist * 0.9,
                                 th_alpha=1.05,
-                                th_beta=1.75,
-                                device=device
+                                th_beta=1.75
                             )
 
                             mesh = trimesh.Trimesh(vertices=verts.detach().cpu().numpy(), faces=faces.detach().cpu().numpy())
