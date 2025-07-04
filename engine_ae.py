@@ -126,16 +126,16 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         
 
         with_grads = args.grad_weight > 0.0
-        loss_value = 0
+
         with torch.cuda.amp.autocast(enabled=False):
             with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=True):
+                print(points, udf, surface, gt_grads)
                 outputs = model(surface, points, with_grads=with_grads)
 
                 # KL loss
                 if 'kl' in outputs and outputs['kl'] is not None:
                     loss_kl = outputs['kl']
-                    loss_kl = kl_weight * (torch.sum(loss_kl) / loss_kl.shape[0])
-                    loss_kl.backward(retain_graph=True)
+                    loss_kl = torch.sum(loss_kl) / loss_kl.shape[0]
                 else:
                     loss_kl = None
                 
@@ -145,8 +145,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         grads = outputs['grads']    # if mse_loss, grads are already in the right direction
                     else:
                         grads = -outputs['grads']   # if sigmoid loss, grads are in the opposite direction
-                    loss_grads = grad_weight * (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()
-                    loss_grads.backward(retain_graph=True)
+                    loss_grads = (1 - F.cosine_similarity(grads[grads_mask], gt_grads[grads_mask], dim=-1)).mean()
                 else:
                     loss_grads = None
 
@@ -157,15 +156,15 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
                     loss_rand = criterion(logits[:, n_near_pts:], labels[:, n_near_pts:])
                     loss_srf = None
-                    loss_udf = loss_near + loss_rand
-                    loss_udf.backward()
+                    loss = loss_near + loss_rand
                 else:
                     loss_near = criterion(logits[:, :n_near_pts], labels[:, :n_near_pts])
                     loss_rand = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts], labels[:, n_near_pts:n_near_pts+n_rnd_pts])
                     loss_srf = criterion(logits[:, n_near_pts:n_near_pts+n_rnd_pts:], labels[:, n_near_pts:n_near_pts+n_rnd_pts:])
 
-                    loss_udf = loss_near + loss_rand + loss_srf
-                    loss_udf.backward()
+                    loss = loss_near + loss_rand + loss_srf
+                
+                
 
                 if data_iter_step == 0 and not args.model == "hunyuan_garments":
 
@@ -395,12 +394,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                         except Exception as e:
                             print(e)
 
-                loss_value += loss_udf.item()
                 if loss_kl is not None:
-                    loss_value = loss_value + kl_weight * loss_kl.item()
+                    loss = loss + kl_weight * loss_kl
                 if loss_grads is not None:
-                    loss_value = loss_value + grad_weight * loss_grads.item()
+                    loss = loss + grad_weight * loss_grads
 
+        loss_value = loss.item()
 
         threshold = 0.5
 
@@ -423,13 +422,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         # optimizer.zero_grad()
 
 
-        # loss_scaler(loss, optimizer, clip_grad=max_norm,
-        #             parameters=model.parameters(), create_graph=False,
-        #             update_grad=(data_iter_step + 1) % accum_iter == 0)
-        torch.cuda.synchronize()
+        loss_scaler(loss, optimizer, clip_grad=max_norm,
+                    parameters=model.parameters(), create_graph=False,
+                    update_grad=(data_iter_step + 1) % accum_iter == 0)
         if (data_iter_step + 1) % accum_iter == 0:
-            optimizer.step()
             optimizer.zero_grad()
+
         torch.cuda.synchronize()
 
         # Log batch losses to wandb
