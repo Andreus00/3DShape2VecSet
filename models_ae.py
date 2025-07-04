@@ -751,11 +751,14 @@ def kl_garments(N=8192, M=512, D=32):
 
 
 
-def hunyuan_garments(N=4096*10*2, M=4096, D=64):
+def hunyuan_garments(N=4096*10*2, M=4096, D=64, sharpedge_ratio=0.5):
     vae = ShapeVAE.from_pretrained(
         'tencent/Hunyuan3D-2.1',
         use_safetensors=False,
         variant='fp16',
+        num_latents=M,
+        pc_size=int(N * (1 - sharpedge_ratio)),
+        pc_sharpedge_size=int(N * sharpedge_ratio),
     )
     assert vae.latent_shape[0] == M, f"{vae.latent_shape[0]} != {M}"
     assert vae.latent_shape[1] == D, f"{vae.latent_shape[1]} != {D}"

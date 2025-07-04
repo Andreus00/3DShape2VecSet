@@ -166,6 +166,9 @@ class VectsetVAE(nn.Module):
         device='cuda',
         dtype=torch.float16,
         use_safetensors=None,
+        num_latents=None,
+        pc_size=None,
+        pc_sharpedge_size=None,
         **kwargs,
     ):
         # load config
@@ -185,6 +188,13 @@ class VectsetVAE(nn.Module):
             ckpt = torch.load(ckpt_path, map_location='cpu', weights_only=True)
 
         model_kwargs = config['params']
+        if num_latents is not None:
+            model_kwargs["num_latents"] = num_latents
+        if pc_size is not None:
+            model_kwargs["pc_size"] = pc_size
+        if pc_sharpedge_size is not None:
+            model_kwargs["pc_sharpedge_size"] = pc_sharpedge_size
+        
         model_kwargs.update(kwargs)
 
         model = cls(**model_kwargs)
