@@ -114,11 +114,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         # surface = surface * args.global_scale
         # udf = udf * args.global_scale
 
-        if args.mse_loss:
-            labels = torch.clip(udf, 0, args.max_dist) / args.max_dist
-        else:
-            labels = torch.clip(udf, 0, args.max_dist)
-            labels = 1 - (labels / args.max_dist)
+        labels = torch.clip(udf, 0, args.max_dist) / args.max_dist
+        if not args.mse_loss:
+            labels = 1 - labels
         gt_grads = gt_grads.to(device)
 
         grads_mask = torch.bitwise_and(udf < args.max_dist*0.9, udf > 0.0001).reshape(*gt_grads.shape[:2])
