@@ -33,10 +33,8 @@ srun env -u SLURM_PROCID python3 -m torch.distributed.launch --nproc_per_node=4 
 	--rdzv_endpoint=localhost:29391 main_ae_garmentcode.py \
 	--data_path ../GarmentCode/garmentcodedata_v2 \
 	--device cuda --batch_size 1 --accum_iter 64 --latent_vec_num 2048 \
-	--latent_vec_dim 64 --max_dist 0.1 --warmup_epoch 0 --lr 0.0001 \
+	--latent_vec_dim 64 --max_dist 0.01 --warmup_epoch 0 --lr 0.0001 \
 	--save_every 1 --epochs 800 --output_dir output_bce_bigger --log_dir output_bce_bigger \
-	--point_cloud_size 32768 --num_workers 8 \
-	--resume output_bce_bigger/checkpoint-2.pth --start_epoch 3 \
-	--wandb_id 23in42y6
+	--point_cloud_size 32768 --num_workers 4
 
 conda deactivate
