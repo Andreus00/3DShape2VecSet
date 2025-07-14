@@ -258,7 +258,7 @@ class VectsetVAE(nn.Module):
         self.surface_extractor = surface_extractor
 
     def latents2mesh(self, latents: torch.FloatTensor, **kwargs):
-        grid_logits = self.volume_decoder(latents, self.geo_decoder, **kwargs)
+        grid_logits = self.volume_decoder(latents, self.geo_decoder, **kwargs).abs()
         outputs = self.surface_extractor(grid_logits, **kwargs)
         return outputs
 
@@ -386,14 +386,24 @@ class ShapeVAE(VectsetVAE):
         return kl, latents
 
 
-    def decode(self, latents, queries):
+
+    def decode_latents(self, latents):
         """
         To decode first call the post_kl and the transformer to transform the latents.
         Then call the geo_decoder to predict logits for the queries.
         """
         latents = self.post_kl(latents)
         latents = self.transformer(latents)
-        logits = self.geo_decoder(queries=queries, latents=latents).abs()    # Changed to abs to remove sign
+        return latents
+
+
+    def decode(self, latents, queries):
+        """
+        To decode first call the post_kl and the transformer to transform the latents.
+        Then call the geo_decoder to predict logits for the queries.
+        """
+        latents = self.decode_latents(latents)
+        logits = self.geo_decoder(queries=queries, latents=latents).abs()   # Changed to abs to remove sign
         return logits
     
     def decode_with_grad(self, latents, queries):
