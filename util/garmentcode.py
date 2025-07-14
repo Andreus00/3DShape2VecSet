@@ -410,17 +410,23 @@ class GarmentCode(data.Dataset):
             # Sample random indices from surface and importance points
             idxs_surface = np.random.default_rng().choice(sfc.shape[0], self.n_surf_rnd_pts, replace=False)
             idxs_importance = np.random.default_rng().choice(importance_points.shape[0], self.n_surf_imp_pts, replace=False)
+            # idxs_boundary = np.random.default_rng().choice(boundary_points.shape[0], self.n_surf_bnd_pts, replace=False)
 
             # Gather points and corresponding gradients
             surface_points = torch.from_numpy(sfc[idxs_surface]).float()
             importance_points_sampled = torch.from_numpy(importance_points[idxs_importance]).float()
+            # boundary_points_sampled = torch.from_numpy(boundary_points[idxs_boundary]).float()
+            
             surface_grads_sampled = torch.from_numpy(sfc_grads[idxs_surface]).float()
             importance_grads_sampled = torch.from_numpy(importance_grad[idxs_importance]).float()
+            # boundary_grads_sampled = torch.from_numpy(bounday_grad[idxs_boundary]).float()
 
             # Concatenate points and gradients
             surface_data = torch.cat([surface_points, surface_grads_sampled, torch.zeros((surface_points.shape[0], 1))], dim=-1)
             importance_data = torch.cat([importance_points_sampled, importance_grads_sampled, torch.ones((importance_points_sampled.shape[0], 1))], dim=-1)
+            # boundary_data = torch.cat([boundary_points_sampled, boudary_grads_sampled, torch.ones((boundary_points_sampled.shape[0], 1))], dim=-1)
 
+            # surface = torch.cat([surface_data, importance_data, boundary_data], dim=0)
             surface = torch.cat([surface_data, importance_data], dim=0)
 
 
