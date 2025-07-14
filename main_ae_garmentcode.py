@@ -267,7 +267,8 @@ def main(args):
     criterion_type = 'mse' if args.mse_loss else 'bce'
 
     project_name = f"3DShape2VecSet_{test_type}_{distrubuted_type}_{criterion_type}"
-    wandb.init(project=project_name, name=args.model, config=args, id=args.wandb_id, resume="allow")
+    if global_rank == 0:
+        wandb.init(project=project_name, name=args.model, config=args, id=args.wandb_id, resume="allow")
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -277,7 +278,8 @@ def main(args):
             optimizer, device, epoch, loss_scaler,
             args.clip_grad,
             log_writer=log_writer,
-            args=args
+            global_rank=global_rank,
+            args=args,
         )
         if args.output_dir and (epoch % args.save_every == 0 or epoch + 1 == args.epochs):
             misc.save_model(

@@ -67,7 +67,7 @@ if PLOT:
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0,
-                    log_writer=None, args=None):
+                    log_writer=None, global_rank=None, args=None):
     
     if PLOT:
         global ax1, ax2, ax3, ax4
@@ -163,7 +163,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 
                 
 
-                if data_iter_step % 20 == 0:
+                if data_iter_step == 0 and global_rank == 0:
 
                     if PLOT and not args.distributed:
                         
@@ -441,7 +441,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         if loss_grads is not None:
             logging_dict["batch/loss_grads"] = loss_grads.item()
         logging_dict["batch/iou"] = iou.item()
-        wandb.log(logging_dict)
+        if global_rank == 0:
+            wandb.log(logging_dict)
 
         metric_logger.update(loss=loss_value)
 
@@ -479,7 +480,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     logging_dict.update({f"epoch/{k}":v.global_avg for k, v in metric_logger.meters.items()})
-    wandb.log(logging_dict)
+    if global_rank == 0:
+        wandb.log(logging_dict)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
