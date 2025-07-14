@@ -13,6 +13,7 @@ from torch_cluster import fps
 from timm.models.layers import DropPath
 
 from hunyuan_model.model import ShapeVAE
+from hunyuan_model.model_v2 import ShapeVAE as ShapeVAE_v2
 
 def exists(val):
     return val is not None
@@ -751,15 +752,26 @@ def kl_garments(N=8192, M=512, D=32):
 
 
 
-def hunyuan_garments(N=4096*10*2, M=4096, D=64, sharpedge_ratio=0.5):
-    vae = ShapeVAE.from_pretrained(
-        'tencent/Hunyuan3D-2.1',
-        use_safetensors=False,
-        variant='fp16',
-        num_latents=M,
-        pc_size=int(N * (1 - sharpedge_ratio)),
-        pc_sharpedge_size=int(N * sharpedge_ratio),
-        dtype=torch.float32
+def hunyuan_garments(N=4096*10*2, M=4096, D=64, sharpedge_ratio=0.5, boundary_ratio=None):
+    model_class = ShapeVAE if boundary_ratio is None else ShapeVAE_v2
+    kwds = {
+        "model_path": 'tencent/Hunyuan3D-2.1',
+        "use_safetensors": False,
+        "variant": 'fp16',
+        "num_latents": M,
+        "dtype": torch.float32
+    }
+    if boundary_ratio is not None:
+        kwds["pc_size"] = int(N * (1 - (sharpedge_ratio + boundary_ratio)))
+        kwds["pc_sharpedge_size"] = int(N * sharpedge_ratio)
+        kwds["pc_boundary_size"] = int(N * boundary_ratio)
+    else:
+        kwds["pc_size"] = int(N * (1 - sharpedge_ratio))
+        kwds["pc_sharpedge_size"] = int(N * sharpedge_ratio)
+
+
+    vae = model_class.from_pretrained(
+        **kwds
     )
     assert vae.latent_shape[0] == M, f"{vae.latent_shape[0]} != {M}"
     assert vae.latent_shape[1] == D, f"{vae.latent_shape[1]} != {D}"
