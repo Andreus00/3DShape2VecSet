@@ -33,7 +33,7 @@ srun env -u SLURM_PROCID python3 -m torch.distributed.launch  --nproc_per_node=4
     --rdzv_endpoint=localhost:29334 main_ae_garmentcode.py \
     --data_path ../GarmentCode/garmentcodedata_v2 \
     --device cuda --batch_size 1 --accum_iter 32 --latent_vec_num 4096 --max_dist 0.01\
-    --latent_vec_dim 64 --warmup_epochs 0 --lr 0.00001 \
+    --latent_vec_dim 64 --warmup_epochs 0 \
     --save_every 1 --epochs 800 --output_dir output_mse_hy3d_bnd --log_dir output_mse_hy3d_bnd --mse_loss \
     --point_cloud_size 81920 --num_workers 4 \
     --surf_imp_percent 0.25 --surf_bnd_percent 0.25 \
