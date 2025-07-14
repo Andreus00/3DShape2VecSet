@@ -120,6 +120,7 @@ def get_args_parser():
     # additional parameters
     parser.add_argument('--only_udf', action='store_true', help='Only load dataset and calculate udf for garments')
     parser.add_argument('--force_occupancy', action='store_true', help='Only load dataset and calculate udf for garments')
+    parser.add_argument('--add_boundary_grads', action='store_true', help='Use this to calculate the boundary gradients for the garments and integrate them in the dataset npz files')
     parser.add_argument('--save_every', default=50, type=int, help='Saving iterval')
     parser.add_argument('--max_dist', default=0.1, type=float, help='Max fistance for the UDF')
     parser.add_argument('--mse_loss', action='store_true', help='Use MSE loss instead of BCEWithLogitsLoss')
@@ -212,7 +213,7 @@ def main(args):
 
     
     if args.model.startswith('hunyuan_garments'):
-        model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim, sharpedge_ratio=args.surf_imp_percent)
+        model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim, sharpedge_ratio=args.surf_imp_percent, boundary_ratio=args.surf_bnd_percent)
     else:
         model = models_ae.__dict__[args.model](N=args.point_cloud_size, M=args.latent_vec_num, D=args.latent_vec_dim)
     model.to(device)

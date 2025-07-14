@@ -100,27 +100,6 @@ def importance_sampling(mesh, n_points=10_000, device="cuda"):
 
     return points, grads
 
-def get_boundary_points(mesh_trimesh, numpts=8192):
-    # Plot mesh boundary edges
-    edges = mesh_trimesh.edges[tri.grouping.group_rows(mesh_trimesh.edges_sorted, require_count=1)]
-    
-    # Oversample the boundary edges to have more points along each edge
-    n_edges = len(edges)
-    if n_edges == 0:
-        return np.empty((0, 3))
-    n_edge_samples = max(2, int(np.ceil(numpts / n_edges))) # Number of points per edge (including endpoints)
-    edge_pts = []
-    for edge in edges:
-        v0 = mesh_trimesh.vertices[edge[0]]
-        v1 = mesh_trimesh.vertices[edge[1]]
-        # Interpolate n_edge_samples points along the edge
-        t = np.linspace(0, 1, n_edge_samples)[:, None]
-        pts = (1 - t) * v0 + t * v1
-        edge_pts.append(pts)
-    edge_pts = np.concatenate(edge_pts, axis=0)
-    if edge_pts.shape[0] > numpts:
-        edge_pts = edge_pts[np.random.permutation(edge_pts.shape[0])][:numpts]
-    return edge_pts
 
 def get_boundary_points_torch(mesh_trimesh, numpts=8192, device='cuda'):
     # Move to GPU if available
@@ -160,8 +139,56 @@ def get_boundary_points_torch(mesh_trimesh, numpts=8192, device='cuda'):
 
     return edge_pts.cpu().numpy()
 
+def get_boundary_points_and_normals_torch(mesh_trimesh, numpts=8192, device='cuda'):
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
+
+    # Identify boundary edges (edges belonging to only one face)
+    boundary_edges_mask = tri.grouping.group_rows(mesh_trimesh.edges_sorted, require_count=1)
+    edges = mesh_trimesh.edges[boundary_edges_mask]
+    edge_faces = mesh_trimesh.edges_face[boundary_edges_mask]  # Face indices for each boundary edge
+
+    n_edges = len(edges)
+    if n_edges == 0:
+        return (torch.empty((0, 3), device=device).cpu().numpy(),
+                torch.empty((0, 3), device=device).cpu().numpy())
+
+    n_edge_samples = max(2, int(np.ceil(numpts / n_edges)))
+
+    # Convert to torch tensors
+    vertices = torch.tensor(mesh_trimesh.vertices, dtype=torch.float32, device=device)
+    face_normals = torch.tensor(mesh_trimesh.face_normals, dtype=torch.float32, device=device)
+    edges_torch = torch.tensor(edges, dtype=torch.long, device=device)
+    edge_face_torch = torch.tensor(edge_faces, dtype=torch.long, device=device)
+
+    # Get endpoints of each edge
+    v0 = vertices[edges_torch[:, 0]]  # (n_edges, 3)
+    v1 = vertices[edges_torch[:, 1]]  # (n_edges, 3)
+
+    # Sample interpolation points
+    t = torch.linspace(0, 1, steps=n_edge_samples, device=device).view(1, -1, 1)  # (1, n_samples, 1)
+    v0_exp = v0.unsqueeze(1)  # (n_edges, 1, 3)
+    v1_exp = v1.unsqueeze(1)
+    pts = (1 - t) * v0_exp + t * v1_exp  # (n_edges, n_samples, 3)
+
+    # Repeat normals per edge
+    normals = face_normals[edge_face_torch]  # (n_edges, 3)
+    normals = normals.unsqueeze(1).expand(-1, n_edge_samples, -1)  # (n_edges, n_samples, 3)
+
+    # Flatten
+    edge_pts = pts.reshape(-1, 3)
+    normals = normals.reshape(-1, 3)
+
+    # Subsample if needed
+    if edge_pts.shape[0] > numpts:
+        idx = torch.randperm(edge_pts.shape[0], device=device)[:numpts]
+        edge_pts = edge_pts[idx]
+        normals = normals[idx]
+
+    return edge_pts.cpu().numpy(), normals.cpu().numpy()
+
 data_keys = {
     "boundary",
+    "boundary_grads",
     "surface",
     "surface_grads",
     "importance_points",
@@ -201,7 +228,7 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
             with np.load(udf_path, allow_pickle=True) as data:
                 if all(key in data for key in data_keys):
                     return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
-                elif all(key in data for key in (data_keys - {'boundary'})):
+                elif all(key in data for key in (data_keys - {'boundary', 'boundary_grads'})):
                     # Only 'boundary' is missing, so compute and add it
                     mesh_trimesh = tri.load(str(model_file))
                     if test_dummy_sphere:
@@ -211,14 +238,18 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
                     mesh_trimesh = mesh_trimesh.apply_translation(-shifts)
                     scale = (1 / np.abs(b_max - b_min).max()) * scaling
                     mesh_trimesh = mesh_trimesh.apply_scale(scale)
-                    boundary = get_boundary_points(mesh_trimesh, numpts=8192)
+                    boundary, boundary_grads = get_boundary_points_and_normals_torch(mesh_trimesh, numpts=32768)
+                    
                     npz_data = dict(data)
                     npz_data["boundary"] = boundary
+                    npz_data["boundary_grads"] = boundary_grads
+
             if npz_data is not None:
                 # Save the new file with boundary added
                 np.savez(
                     udf_path,
                     boundary=npz_data["boundary"],
+                    boundary_grads=npz_data["boundary_grads"],
                     surface=npz_data["surface"],
                     surface_grads=npz_data["surface_grads"],
                     importance_points=npz_data["importance_points"],
@@ -256,10 +287,10 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
     surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
 
-    boundary = get_boundary_points_torch(mesh_trimesh, numpts=8192)
+    boundary = get_boundary_points_and_normals_torch(mesh_trimesh, numpts=32768)
     if len(boundary) == 0:
         print("NO BOUNDARY FOUND")
-        boundary = surface[np.random.permutation(surface.shape[0])[:8192]]
+        boundary = surface[np.random.permutation(surface.shape[0])[:32768]]
 
     importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
 
@@ -391,6 +422,7 @@ class GarmentCode(data.Dataset):
             try:
                 with np.load(point_path) as data:
                     boundary_points = data["boundary"]
+                    boundary_grads = data["boundary_grads"]
                     sfc = data["surface"]
                     sfc_grads = data["surface_grads"]
                     importance_points = data["importance_points"]
@@ -410,24 +442,23 @@ class GarmentCode(data.Dataset):
             # Sample random indices from surface and importance points
             idxs_surface = np.random.default_rng().choice(sfc.shape[0], self.n_surf_rnd_pts, replace=False)
             idxs_importance = np.random.default_rng().choice(importance_points.shape[0], self.n_surf_imp_pts, replace=False)
-            # idxs_boundary = np.random.default_rng().choice(boundary_points.shape[0], self.n_surf_bnd_pts, replace=False)
+            idxs_boundary = np.random.default_rng().choice(boundary_points.shape[0], self.n_surf_bnd_pts, replace=False)
 
             # Gather points and corresponding gradients
             surface_points = torch.from_numpy(sfc[idxs_surface]).float()
             importance_points_sampled = torch.from_numpy(importance_points[idxs_importance]).float()
-            # boundary_points_sampled = torch.from_numpy(boundary_points[idxs_boundary]).float()
+            boundary_points_sampled = torch.from_numpy(boundary_points[idxs_boundary]).float()
             
             surface_grads_sampled = torch.from_numpy(sfc_grads[idxs_surface]).float()
             importance_grads_sampled = torch.from_numpy(importance_grad[idxs_importance]).float()
-            # boundary_grads_sampled = torch.from_numpy(bounday_grad[idxs_boundary]).float()
+            boundary_grads_sampled = torch.from_numpy(boundary_grads[idxs_boundary]).float()
 
             # Concatenate points and gradients
             surface_data = torch.cat([surface_points, surface_grads_sampled, torch.zeros((surface_points.shape[0], 1))], dim=-1)
             importance_data = torch.cat([importance_points_sampled, importance_grads_sampled, torch.ones((importance_points_sampled.shape[0], 1))], dim=-1)
-            # boundary_data = torch.cat([boundary_points_sampled, boudary_grads_sampled, torch.ones((boundary_points_sampled.shape[0], 1))], dim=-1)
+            boundary_data = torch.cat([boundary_points_sampled, boundary_grads_sampled, torch.ones((boundary_points_sampled.shape[0], 1))], dim=-1)
 
-            # surface = torch.cat([surface_data, importance_data, boundary_data], dim=0)
-            surface = torch.cat([surface_data, importance_data], dim=0)
+            surface = torch.cat([surface_data, importance_data, boundary_data], dim=0)
 
 
             idxs_near = np.random.default_rng().choice(points_near.shape[0], self.n_near_pts, replace=False)
