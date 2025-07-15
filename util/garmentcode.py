@@ -12,7 +12,6 @@ import numpy as np
 
 from PIL import Image
 import trimesh as tri
-import mesh_to_sdf
 import tqdm
 import json
 
