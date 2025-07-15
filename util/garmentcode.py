@@ -263,7 +263,10 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
                 )
                 return {'model': model_file, 'point_path': udf_path, 'body_info_path': body_info_path}
         except BadZipFile as e:
-            print(f"Corrupted UDF file {udf_path}: {e}. Recomputing.")
+            print(f"BadZipFile: Corrupted UDF file {udf_path}: {e}. Recomputing.")
+            os.remove(udf_path)
+        except EOFError as e:
+            print(f"EOFError: Corrupted UDF file {udf_path}: {e}. Recomputing.")
             os.remove(udf_path)
 
 
