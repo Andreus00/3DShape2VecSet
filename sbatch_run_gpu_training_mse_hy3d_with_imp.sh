@@ -4,7 +4,7 @@
 
 #SBATCH -J ge-mse-hy3d-bnd                  # Job name
 #SBATCH --ntasks=1                 # Number of tasks
-#SBATCH --cpus-per-task=8          # Number of CPU cores per task
+#SBATCH --cpus-per-task=16          # Number of CPU cores per task
 #SBATCH --nodes=1                  # Ensure that all cores are on the same machine with nodes=1
 #SBATCH --partition=a100-galvani   # Which partition will run your job
 #SBATCH --time=3-00:00             # Allowed runtime in D-HH:MM
@@ -32,12 +32,12 @@ conda activate shape2vec
 srun env -u SLURM_PROCID python3 -m torch.distributed.launch  --nproc_per_node=4 \
     --rdzv_endpoint=localhost:29334 main_ae_garmentcode.py \
     --data_path ../GarmentCode/garmentcodedata_v2 \
-    --device cuda --batch_size 1 --accum_iter 32 --latent_vec_num 4096 --max_dist 0.01\
+    --device cuda --batch_size 1 --accum_iter 16 --latent_vec_num 4096 --max_dist 0.01\
     --latent_vec_dim 64 --warmup_epochs 0 \
     --save_every 1 --epochs 800 --output_dir output_mse_hy3d_bnd --log_dir output_mse_hy3d_bnd --mse_loss \
     --point_cloud_size 81920 --num_workers 4 \
     --surf_imp_percent 0.25 --surf_bnd_percent 0.25 \
     --surface_samples_ratio 0.0 --random_samples_ratio 0.25 --grad_weight 0.0 --model hunyuan_garments \
-    --lr 0.000001
+    --lr 0.000001 --limit 102000
 
 conda deactivate

@@ -9,7 +9,7 @@
 #SBATCH --partition=2080-galvani   # Which partition will run your job
 #SBATCH --time=0-20:00             # Allowed runtime in D-HH:MM
 #SBATCH --mem=16G                  # Total memory pool for all cores (see also --mem-per-cpu); exceeding this number will cause your job to fail.
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:1
 #SBATCH --output=./logs/myjob-%j.out       # File to which STDOUT will be written - make sure this is not on $HOME
 #SBATCH --error=./logs/myjob-%j.err        # File to which STDERR will be written - make sure this is not on $HOME
 #SBATCH --mail-type=ALL            # Type of email notification- BEGIN,END,FAIL,ALL
@@ -28,5 +28,5 @@ pwd
 source ~/.bashrc
 conda activate shape2vec
 # Compute Phase
-srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --device cuda --force_occupancy --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
+srun env -u SLURM_PROCID python3 main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --device cuda --only_udf # srun will automatically pickup the configuration defined via `#SBATCH` and `sbatch` command line arguments  
 # srun env -u SLURM_PROCID python3 -m torch.distributed.launch main_ae_garmentcode.py --data_path ../GarmentCode/garmentcodedata_v2 --force_occupancy --only_udf

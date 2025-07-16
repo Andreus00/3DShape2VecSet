@@ -127,6 +127,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         with torch.cuda.amp.autocast(enabled=False):
             with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=True):
                 # print(points, udf, surface, gt_grads)
+                # print("Current CUDA device index:", torch.cuda.current_device(), f"Global Rank: {global_rank}", "- Data iter step", data_iter_step)
                 outputs = model(surface, points, with_grads=with_grads)
 
                 # KL loss
@@ -163,7 +164,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                 
                 
 
-                if data_iter_step == 0 and global_rank == 0:
+                if data_iter_step == 0 and global_rank == 0 and epoch > 0 and False:
 
                     if PLOT and not args.distributed:
                         
@@ -365,6 +366,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     
                 
                     if epoch > 0 and data_iter_step == 0:
+                        print("Extracting mesh with CUDA device index:", torch.cuda.current_device())
                         try:
                             coords_range = torch.asarray(((-1 + global_offset[0]) * args.global_scale, args.global_scale * (1 + global_offset[0])), device='cpu')
                             verts, faces = get_mesh_from_udf(
@@ -372,7 +374,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                                 coords_range=(-1, 1),
                                 device=device,
                                 max_dist=args.max_dist,
-                                N=256,
+                                N=128,
                                 use_fast_grid_filler=False,
                                 th_dist=args.max_dist * 0.9,
                                 th_alpha=1.05,

@@ -14,6 +14,7 @@ from PIL import Image
 import trimesh as tri
 import tqdm
 import json
+import sys
 
 import open3d as o3d
 from zipfile import BadZipFile
@@ -383,7 +384,6 @@ class GarmentCode(data.Dataset):
             print(f"Limiting dataset to {limit} samples.")
 
         # Parallen gpu running
-        
         world_size = torch.cuda.device_count()
         if world_size > 0:
             print(f"Using {world_size} GPUs")
@@ -420,25 +420,28 @@ class GarmentCode(data.Dataset):
         if self.single_garment_overfit or self.test_dummy_sphere:   # If we are testing the dummy sphere or single garment overfit, we store the points directly in memory
             boundary_points, sfc, sfc_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand = self.models[idx]
         else:
-            point_path = self.models[idx]['point_path']
-            try:
-                with np.load(point_path) as data:
-                    boundary_points = data["boundary"]
-                    boundary_grads = data["boundary_grads"]
-                    sfc = data["surface"]
-                    sfc_grads = data["surface_grads"]
-                    importance_points = data["importance_points"]
-                    points_near = data["points_near"]
-                    points_rand = data["points_rand"]
-                    udf_near = data["udf_near"]
-                    udf_rand = data["udf_rand"]
-                    importance_grad = data["importance_grad"]
-                    gradients_near = data["gradients_near"]
-                    gradients_rand = data["gradients_rand"]
-                    
-            except Exception as e:
-                print(e)
-                print(point_path)
+            sfc = None
+            while sfc is not None:
+                point_path = self.models[idx]['point_path']
+                try:
+                    with np.load(point_path) as data:
+                        boundary_points = data["boundary"]
+                        boundary_grads = data["boundary_grads"]
+                        sfc = data["surface"]
+                        sfc_grads = data["surface_grads"]
+                        importance_points = data["importance_points"]
+                        points_near = data["points_near"]
+                        points_rand = data["points_rand"]
+                        udf_near = data["udf_near"]
+                        udf_rand = data["udf_rand"]
+                        importance_grad = data["importance_grad"]
+                        gradients_near = data["gradients_near"]
+                        gradients_rand = data["gradients_rand"]
+                except Exception as e:
+                    print(e, file=sys.stderr)
+                    print(point_path, file=sys.stderr)
+                    print("FAILED TO LOAD. FALLBACK ON PREVIOUS SAMPLE", file=sys.stderr)
+                    idx = (idx - 1) % len(self.models)
 
         if self.hunyuan:
             # Sample random indices from surface and importance points

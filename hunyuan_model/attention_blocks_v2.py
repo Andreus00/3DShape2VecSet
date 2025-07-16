@@ -599,7 +599,7 @@ class PointCrossAttentionEncoder(nn.Module):
         num_latents = int(num_pts / self.downsample_ratio)
 
         # Compute the number of random and sharpedge latents
-        print(f'pc_size: {self.pc_size}, pc_sharpedge_size: {self.pc_sharpedge_size}, pc_boundary_size: {self.pc_boundary_size}')
+        # print(f'pc_size: {self.pc_size}, pc_sharpedge_size: {self.pc_sharpedge_size}, pc_boundary_size: {self.pc_boundary_size}')
         num_random_query = self.pc_size / (self.pc_size + self.pc_sharpedge_size + self.pc_boundary_size) * num_latents
         num_sharpedge_query =  self.pc_sharpedge_size / (self.pc_size + self.pc_sharpedge_size + self.pc_boundary_size) * num_latents
         num_boundary_query =  self.pc_boundary_size / (self.pc_size + self.pc_sharpedge_size + self.pc_boundary_size) * num_latents
