@@ -421,7 +421,7 @@ class GarmentCode(data.Dataset):
             boundary_points, sfc, sfc_grads, importance_points, importance_grad, points_near, points_rand, udf_near, udf_rand, gradients_near, gradients_rand = self.models[idx]
         else:
             sfc = None
-            while sfc is not None:
+            while sfc is None:
                 point_path = self.models[idx]['point_path']
                 try:
                     with np.load(point_path) as data:
