@@ -290,14 +290,15 @@ def process_garment_worker_meshbox_norm(args, mean_body_mean, force_occupancy, m
 
     surface, surface_grads, points_near, udf_near, gradients_near, points_rand, udf_rand, gradients_rand = sample_udf_from_mesh(mesh_trimesh, number_of_points=250_000, device=device)
 
-    boundary = get_boundary_points_and_normals_torch(mesh_trimesh, numpts=32768)
+    boundary, boundary_grads = get_boundary_points_and_normals_torch(mesh_trimesh, numpts=32768)
     if len(boundary) == 0:
         print("NO BOUNDARY FOUND")
+        raise ValueError(f"No boundary points found for {model_file}. Please check the mesh.")
         boundary = surface[np.random.permutation(surface.shape[0])[:32768]]
 
     importance_points, importance_grad = importance_sampling(mesh_trimesh, n_points=50_000, device=device)
 
-    np.savez(udf_path, boundary=boundary, surface=surface, surface_grads=surface_grads, importance_points=importance_points.detach().cpu(), importance_grad=importance_grad.detach().cpu(), points_near=points_near, \
+    np.savez(udf_path, boundary=boundary, boundary_grads=boundary_grads, surface=surface, surface_grads=surface_grads, importance_points=importance_points.detach().cpu(), importance_grad=importance_grad.detach().cpu(), points_near=points_near, \
                 points_rand=points_rand, udf_near=udf_near, udf_rand=udf_rand, gradients_near=gradients_near, \
                 gradients_rand=gradients_rand)
 
