@@ -282,6 +282,99 @@ class VectsetVAE(nn.Module):
             self.surface_extractor = MCSurfaceExtractor()
 
 
+class Decoder(VectsetVAE):
+    def __init__(
+        self,
+        *,
+        num_latents: int,
+        embed_dim: int,
+        width: int,
+        heads: int,
+        num_decoder_layers: int,
+        downsample_ratio: int = 20,
+        geo_decoder_downsample_ratio: int = 1,
+        geo_decoder_mlp_expand_ratio: int = 4,
+        geo_decoder_ln_post: bool = True,
+        num_freqs: int = 8,
+        include_pi: bool = True,
+        qkv_bias: bool = True,
+        qk_norm: bool = False,
+        label_type: str = "binary",
+        drop_path_rate: float = 0.0,
+        ckpt_path = None,
+    ):
+
+        self.geo_decoder_ln_post = geo_decoder_ln_post
+        self.downsample_ratio = downsample_ratio
+
+        self.fourier_embedder = FourierEmbedder(num_freqs=num_freqs, include_pi=include_pi)
+
+        self.post_kl = nn.Linear(embed_dim, width)
+
+        self.transformer = Transformer(
+            n_ctx=num_latents,
+            width=width,
+            layers=num_decoder_layers,
+            heads=heads,
+            qkv_bias=qkv_bias,
+            qk_norm=qk_norm,
+            drop_path_rate=drop_path_rate
+        )
+
+        self.geo_decoder = CrossAttentionDecoder(
+            fourier_embedder=self.fourier_embedder,
+            out_channels=1,
+            num_latents=num_latents,
+            mlp_expand_ratio=geo_decoder_mlp_expand_ratio,
+            downsample_ratio=geo_decoder_downsample_ratio,
+            enable_ln_post=self.geo_decoder_ln_post,
+            width=width // geo_decoder_downsample_ratio,
+            heads=heads // geo_decoder_downsample_ratio,
+            qkv_bias=qkv_bias,
+            qk_norm=qk_norm,
+            label_type=label_type,
+        )
+
+        if ckpt_path is not None:
+            self.init_from_ckpt(ckpt_path)
+
+        def init_from_ckpt(self, path, ignore_keys=()):
+            state_dict = torch.load(path, map_location="cpu")
+            state_dict = state_dict.get("state_dict", state_dict)
+            keys = list(state_dict.keys())
+            for k in keys:
+                for ik in ignore_keys:
+                    if k.startswith(ik):
+                        print("Deleting key {} from state_dict.".format(k))
+                        del state_dict[k]
+            missing, unexpected = self.load_state_dict(state_dict, strict=False)
+            print(f"Restored from {path} with {len(missing)} missing and {len(unexpected)} unexpected keys")
+            if len(missing) > 0:
+                print(f"Missing Keys: {missing}")
+                print(f"Unexpected Keys: {unexpected}")
+        
+
+    def decode_latents(self, latents):
+        """
+        To decode first call the post_kl and the transformer to transform the latents.
+        Then call the geo_decoder to predict logits for the queries.
+        """
+        latents = self.post_kl(latents)
+        latents = self.transformer(latents)
+        return latents
+
+
+    def decode(self, latents, queries):
+        """
+        To decode first call the post_kl and the transformer to transform the latents.
+        Then call the geo_decoder to predict logits for the queries.
+        """
+        latents = self.decode_latents(latents)
+        logits = self.geo_decoder(queries=queries, latents=latents).abs()   # Changed to abs to remove sign
+        return logits
+
+
+
 class ShapeVAE(VectsetVAE):
     def __init__(
         self,
@@ -445,62 +538,5 @@ class ShapeVAE(VectsetVAE):
         else:
             o = self.decode(latent, queries).squeeze(-1)
             return {'logits': o, 'kl': kl}
-        
 
 
-if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    pc_size = 4096*10  # Example point cloud size, adjust as needed
-    pc_sharpedge_size = 4096*10  # Example sharp edge size, adjust as needed
-    z_scale_factor = 1.0  # Example scale factor, adjust as needed
-    # Example initialization of ShapeVAE with the provided parameters
-    shape_vae = ShapeVAE(
-        num_latents=4096,
-        embed_dim=64,
-        num_freqs=8,
-        include_pi=False,
-        heads=16,
-        width=1024,
-        num_encoder_layers=8,
-        num_decoder_layers=16,
-        qkv_bias=False,
-        qk_norm=True,
-        scale_factor=z_scale_factor,  # Make sure z_scale_factor is defined
-        geo_decoder_mlp_expand_ratio=4,
-        geo_decoder_downsample_ratio=1,
-        geo_decoder_ln_post=True,
-        point_feats=0,
-        pc_size=pc_size,  # Make sure pc_size is defined
-        pc_sharpedge_size=pc_sharpedge_size  # Make sure pc_sharpedge_size is defined
-    )
-
-    # Create a sphere mesh using trimesh
-    sphere_mesh = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
-
-    # Sample points from the surface of the sphere
-    points, _ = trimesh.sample.sample_surface(sphere_mesh, pc_size)
-    sharpedge_points, _ = trimesh.sample.sample_surface(sphere_mesh, pc_sharpedge_size)
-
-    # Combine points and sharp edge points into a single array
-    surface = np.concatenate([points, sharpedge_points], axis=0).reshape(-1, 3)
-
-    # Convert to torch tensor and add batch dimension
-    surface_tensor = torch.from_numpy(surface).float().unsqueeze(0).to(next(shape_vae.parameters()).device)
-
-    # Encode the sphere
-    print(f"Encoding the surface...{surface_tensor.shape}")
-    kl, latents = shape_vae.encode(surface_tensor)
-
-    print(f"Encoded latents shape: {latents.shape}, KL divergence: {kl.item()}")
-
-    # Prepare queries for decoding (e.g., a grid of points in the bounding box)
-    bbox = sphere_mesh.bounds
-    grid_x, grid_y, grid_z = [np.linspace(bbox[0, i], bbox[1, i], 32) for i in range(3)]
-    grid = np.stack(np.meshgrid(grid_x, grid_y, grid_z, indexing='ij'), axis=-1).reshape(-1, 3)
-    queries_tensor = torch.from_numpy(grid).float().unsqueeze(0).to(surface_tensor.device)
-
-    # Decode the latents to get logits for the queries
-    logits = shape_vae.decode(latents, queries_tensor)
-
-    print("Logits shape:", logits.shape)
