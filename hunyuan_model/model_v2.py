@@ -303,7 +303,7 @@ class HY3Decoder(VectsetVAE):
         drop_path_rate: float = 0.0,
         ckpt_path = None,
     ):
-
+        super().__init__()
         self.geo_decoder_ln_post = geo_decoder_ln_post
         self.downsample_ratio = downsample_ratio
 
