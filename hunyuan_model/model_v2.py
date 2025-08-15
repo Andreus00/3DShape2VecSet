@@ -377,6 +377,10 @@ class HY3Decoder(VectsetVAE):
     def from_single_file(
         cls,
         ckpt_path="galvani/3DShape2VecSet/hy3d_finetune_ckpt/decoder_state_dict.pth",
+        M=4096,
+        D=64,
+        heads=8,
+        num_decoder_layers=8,
     ):
         state_dict = torch.load(ckpt_path)
         decoder = HY3Decoder(num_latents=M, embed_dim=D, width=1024, heads=8, num_decoder_layers=8)
