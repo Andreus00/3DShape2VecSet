@@ -282,7 +282,7 @@ class VectsetVAE(nn.Module):
             self.surface_extractor = MCSurfaceExtractor()
 
 
-class Decoder(VectsetVAE):
+class HY3Decoder(VectsetVAE):
     def __init__(
         self,
         *,
@@ -373,6 +373,15 @@ class Decoder(VectsetVAE):
         logits = self.geo_decoder(queries=queries, latents=latents).abs()   # Changed to abs to remove sign
         return logits
 
+    @classmethod
+    def from_single_file(
+        cls,
+        ckpt_path="galvani/3DShape2VecSet/hy3d_finetune_ckpt/decoder_state_dict.pth",
+    ):
+        state_dict = torch.load(ckpt_path)
+        decoder = HY3Decoder(num_latents=M, embed_dim=D, width=1024, heads=8, num_decoder_layers=8)
+        decoder.load_state_dict(state_dict, strict=True)
+        return decoder
 
 
 class ShapeVAE(VectsetVAE):
