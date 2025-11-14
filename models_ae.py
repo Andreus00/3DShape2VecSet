@@ -752,8 +752,8 @@ def kl_garments(N=8192, M=512, D=32):
 
 
 
-def hunyuan_garments(N=4096*10*2, M=4096, D=64, sharpedge_ratio=0.5, boundary_ratio=None):
-    model_class = ShapeVAE if boundary_ratio is None else ShapeVAE_v2
+def hunyuan_garments(N=4096*10*2, M=4096, D=64, sharpedge_ratio=0.5, boundary_ratio=None, toggle=False):
+    model_class = ShapeVAE if boundary_ratio is None or toggle is True else ShapeVAE_v2
     kwds = {
         "model_path": 'tencent/Hunyuan3D-2.1',
         "use_safetensors": False,

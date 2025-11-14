@@ -660,8 +660,45 @@ class PointCrossAttentionEncoder(nn.Module):
             query_boundary_pc = flatten_input_boundary_surface_points[idx_query_boundary].view(B, -1, D)
 
         # Concatenate random and sharpedge surface points and query points
+
+        # def lexsort(keys, dim=-1):
+        #     idx = keys[0].argsort(dim=dim, stable=True)
+        #     for k in keys[1:]:
+        #         idx = idx.gather(dim, k.gather(dim, idx).argsort(dim=dim, stable=True))
+            
+        #     return idx
+        # B, N, D = query_random_pc.shape
+        # # Sort query_random_pc for each batch using lexsort
+        # sorted_idx = lexsort([query_random_pc[..., i] for i in reversed(range(D))], dim=1)
+        # query_random_pc = torch.gather(query_random_pc, 1, sorted_idx.unsqueeze(-1).expand(-1, -1, D))
+
+        # B, N, D = query_sharpedge_pc.shape
+        # # Sort query_random_pc for each batch using lexsort
+        # sorted_idx = lexsort([query_sharpedge_pc[..., i] for i in reversed(range(D))], dim=1)
+        # query_sharpedge_pc = torch.gather(query_sharpedge_pc, 1, sorted_idx.unsqueeze(-1).expand(-1, -1, D))
+
+
+        # B, N, D = query_boundary_pc.shape
+        # # Sort query_random_pc for each batch using lexsort
+        # sorted_idx = lexsort([query_boundary_pc[..., i] for i in reversed(range(D))], dim=1)
+        # query_boundary_pc = torch.gather(query_boundary_pc, 1, sorted_idx.unsqueeze(-1).expand(-1, -1, D))
+
+
         query_pc = torch.cat([query_random_pc, query_sharpedge_pc, query_boundary_pc], dim=1)
         input_pc = torch.cat([input_random_pc, input_sharpedge_pc, input_boundary_pc], dim=1)
+        
+        # Visualize the query points and their order
+        # import matplotlib.pyplot as plt
+
+        # Only visualize the first batch for simplicity
+        # fig = plt.figure(figsize=(8, 6))
+        # ax = fig.add_subplot(111, projection='3d')
+        # q = query_pc[0].detach().cpu().numpy()
+        # ax.scatter(q[:, 0], q[:, 1], q[:, 2], c=range(q.shape[0]), cmap='viridis', s=30)
+        # for i in range(q.shape[0]):
+        #     ax.text(q[i, 0], q[i, 1], q[i, 2], str(i), fontsize=8)
+        # ax.set_title("Query Random PC (Order Visualized by Color and Index)")
+        # plt.show()
 
         # PE
         query = self.fourier_embedder(query_pc)

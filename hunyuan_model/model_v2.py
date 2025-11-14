@@ -297,8 +297,8 @@ class HY3Decoder(VectsetVAE):
         geo_decoder_ln_post: bool = True,
         num_freqs: int = 8,
         include_pi: bool = True,
-        qkv_bias: bool = True,
-        qk_norm: bool = False,
+        qkv_bias: bool = False,
+        qk_norm: bool = True,
         label_type: str = "binary",
         drop_path_rate: float = 0.0,
         ckpt_path = None,
@@ -378,12 +378,12 @@ class HY3Decoder(VectsetVAE):
         cls,
         ckpt_path="galvani/3DShape2VecSet/hy3d_finetune_ckpt/decoder_state_dict.pth",
         M=4096,
-        D=64,
+        D=128,
         heads=8,
-        num_decoder_layers=8,
+        num_decoder_layers=16,
     ):
         state_dict = torch.load(ckpt_path)
-        decoder = HY3Decoder(num_latents=M, embed_dim=D, width=1024, heads=8, num_decoder_layers=8)
+        decoder = HY3Decoder(num_latents=M, embed_dim=D, width=1024, heads=4, num_decoder_layers=num_decoder_layers)
         decoder.load_state_dict(state_dict, strict=True)
         return decoder
 
@@ -475,6 +475,27 @@ class ShapeVAE(VectsetVAE):
             self.init_from_ckpt(ckpt_path)
 
 
+    def encode_without_pre_kl(self, surface: torch.Tensor):
+        """
+        To encode call the encoder with a point cloud.
+        Then run the kl divergence and sample from the posterior distribution.
+        """
+        if self.has_features:
+            pc, feats = surface[:, :, :3], surface[:, :, 3:]
+            latents, _ = self.encoder(pc, feats)
+        else:
+            latents, _ = self.encoder(surface, None)
+
+        return latents
+    
+    def run_kl(self, latents):
+        moments = self.pre_kl(latents)
+        posterior = DiagonalGaussianDistribution(moments, feat_dim=-1)
+
+        latents = posterior.sample()
+        kl = posterior.kl(dims=(1, 2))
+        return kl, latents
+
     def encode(self, surface: torch.Tensor):
         """
         To encode call the encoder with a point cloud.
@@ -493,8 +514,6 @@ class ShapeVAE(VectsetVAE):
         kl = posterior.kl(dims=(1, 2))
         return kl, latents
 
-
-
     def decode_latents(self, latents):
         """
         To decode first call the post_kl and the transformer to transform the latents.
@@ -503,7 +522,6 @@ class ShapeVAE(VectsetVAE):
         latents = self.post_kl(latents)
         latents = self.transformer(latents)
         return latents
-
 
     def decode(self, latents, queries):
         """
